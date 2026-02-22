@@ -16,6 +16,7 @@ import com.jetpackduba.gitnuro.managers.newErrorNow
 import com.jetpackduba.gitnuro.models.AuthorInfoSimple
 import com.jetpackduba.gitnuro.models.errorNotification
 import com.jetpackduba.gitnuro.models.positiveNotification
+import com.jetpackduba.gitnuro.repositories.SelectedDiffItemRepository
 import com.jetpackduba.gitnuro.system.OpenFilePickerUseCase
 import com.jetpackduba.gitnuro.system.OpenUrlInBrowserUseCase
 import com.jetpackduba.gitnuro.system.PickerType
@@ -51,7 +52,7 @@ private const val TAG = "TabViewModel"
  */
 class RepositoryOpenViewModel @Inject constructor(
     private val getWorkspacePathUseCase: GetWorkspacePathUseCase,
-    private val diffViewModelProvider: Provider<DiffViewModel>,
+    val diffViewModel: DiffViewModel,
     private val historyViewModelProvider: Provider<HistoryViewModel>,
     private val authorViewModelProvider: Provider<AuthorViewModel>,
     private val tabState: TabState,
@@ -68,6 +69,7 @@ class RepositoryOpenViewModel @Inject constructor(
     private val verticalSplitPaneConfig: VerticalSplitPaneConfig,
     val tabViewModelsProvider: ViewModelsProvider,
     private val globalMenuActionsViewModel: GlobalMenuActionsViewModel,
+    private val selectedDiffItemRepository: SelectedDiffItemRepository,
     sharedRepositoryStateManager: SharedRepositoryStateManager,
     updatesRepository: UpdatesRepository,
 ) : IVerticalSplitPaneConfig by verticalSplitPaneConfig,
@@ -75,20 +77,9 @@ class RepositoryOpenViewModel @Inject constructor(
     private val errorsManager: ErrorsManager = tabState.errorsManager
 
     val selectedItem: StateFlow<SelectedItem> = tabState.selectedItem
-    var diffViewModel: DiffViewModel? = null
 
     val repositoryState: StateFlow<RepositoryState> = sharedRepositoryStateManager.repositoryState
     val rebaseInteractiveState: StateFlow<RebaseInteractiveState> = sharedRepositoryStateManager.rebaseInteractiveState
-
-    private val _diffSelected = MutableStateFlow<DiffType?>(null)
-    val diffSelected: StateFlow<DiffType?> = _diffSelected
-
-    var newDiffSelected: DiffType?
-        get() = diffSelected.value
-        set(value) {
-            _diffSelected.value = value
-            updateDiffEntry()
-        }
 
     private val _blameState = MutableStateFlow<BlameState>(BlameState.None)
     val blameState: StateFlow<BlameState> = _blameState
@@ -107,6 +98,8 @@ class RepositoryOpenViewModel @Inject constructor(
 
     var authorViewModel: AuthorViewModel? = null
         private set
+
+    val diffSelected = selectedDiffItemRepository.diffSelected
 
     private var hasGitDirChanged = false
 
@@ -225,28 +218,11 @@ class RepositoryOpenViewModel @Inject constructor(
     private suspend fun checkUncommittedChanges() = tabState.runOperation(
         refreshType = RefreshType.NONE,
     ) {
-        updateDiffEntry()
         tabState.refreshData(RefreshType.UNCOMMITTED_CHANGES_AND_LOG)
     }
 
     private suspend fun refreshRepositoryInfo() {
         tabState.refreshData(RefreshType.ALL_DATA)
-    }
-
-    private fun updateDiffEntry() {
-        val diffSelected = diffSelected.value
-
-        if (diffSelected != null) {
-            if (diffViewModel == null) { // Initialize the view model if required
-                diffViewModel = diffViewModelProvider.get()
-            }
-
-            diffViewModel?.cancelRunningJobs()
-            diffViewModel?.updateDiff(diffSelected)
-        } else {
-            diffViewModel?.close()
-            diffViewModel = null // Free the view model from the memory if not being used.
-        }
     }
 
     fun openDirectoryPicker(): String? {

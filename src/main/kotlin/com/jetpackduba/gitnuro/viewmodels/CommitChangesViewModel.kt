@@ -5,10 +5,13 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.text.input.TextFieldValue
 import com.jetpackduba.gitnuro.extensions.*
 import com.jetpackduba.gitnuro.git.CloseableView
+import com.jetpackduba.gitnuro.git.DiffType
 import com.jetpackduba.gitnuro.git.RefreshType
 import com.jetpackduba.gitnuro.git.TabState
 import com.jetpackduba.gitnuro.git.diff.GetCommitDiffEntriesUseCase
 import com.jetpackduba.gitnuro.repositories.AppSettingsRepository
+import com.jetpackduba.gitnuro.repositories.DiffSelected
+import com.jetpackduba.gitnuro.repositories.SelectedDiffItemRepository
 import com.jetpackduba.gitnuro.ui.tree_files.TreeItem
 import com.jetpackduba.gitnuro.ui.tree_files.entriesToTreeEntry
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +29,7 @@ class CommitChangesViewModel @Inject constructor(
     private val getCommitDiffEntriesUseCase: GetCommitDiffEntriesUseCase,
     private val appSettingsRepository: AppSettingsRepository,
     private val tabScope: CoroutineScope,
+    private val selectedDiffItemRepository: SelectedDiffItemRepository,
 ) {
     private val _showSearch = MutableStateFlow(false)
     val showSearch: StateFlow<Boolean> = _showSearch
@@ -40,6 +44,8 @@ class CommitChangesViewModel @Inject constructor(
     val textScroll = MutableStateFlow(ScrollState(0))
 
     val showAsTree = appSettingsRepository.showChangesAsTreeFlow
+
+    val diffSelected = selectedDiffItemRepository.diffSelected.map { it as? DiffSelected.CommitedChanges }
 
     private val treeContractedDirectories = MutableStateFlow(emptyList<String>())
 
@@ -186,6 +192,13 @@ class CommitChangesViewModel @Inject constructor(
 
     fun addSearchToCloseableView() = tabScope.launch {
         tabState.addCloseableView(CloseableView.COMMIT_CHANGES_SEARCH)
+    }
+
+    fun selectEntries(entries: List<DiffEntry>) {
+        selectedDiffItemRepository.addDiffCommited(
+            diffType = entries.map { DiffType.CommitDiff(it) },
+            addToExisting = true,
+        )
     }
 
     private fun removeSearchFromCloseableView() = tabScope.launch {

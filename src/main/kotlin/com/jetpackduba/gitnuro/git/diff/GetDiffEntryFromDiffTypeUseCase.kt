@@ -24,7 +24,7 @@ class GetDiffEntryFromDiffTypeUseCase @Inject constructor(
             val oldTree = DirCacheIterator(repository.readDirCache())
             val newTree = FileTreeIterator(repository)
 
-            if (diffType is DiffType.UnstagedDiff)
+            if (diffType.isUnstagedDiff)
                 formatter.scan(oldTree, newTree)
 
             val diffEntry = when (diffType) {
@@ -33,7 +33,7 @@ class GetDiffEntryFromDiffTypeUseCase @Inject constructor(
                 }
 
                 is DiffType.UncommittedDiff -> {
-                    getDiffEntryFromStatusEntryUseCase(git, diffType is DiffType.StagedDiff, diffType.statusEntry)
+                    getDiffEntryFromStatusEntryUseCase(git, diffType.isStagedDiff, diffType.statusEntry)
                 }
             }
 

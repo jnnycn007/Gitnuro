@@ -65,10 +65,12 @@
     <!-- Uncommited changes view -->
     <string name="uncommited_changes_unstaged_title">Unstaged</string>
     <string name="uncommited_changes_unstaged_all_items_action">Stage all</string>
+    <string name="uncommited_changes_unstaged_selected_items_action">Stage selected</string>
     <string name="uncommited_changes_unstaged_item_action">Stage</string>
 
     <string name="uncommited_changes_staged_title">Staged</string>
     <string name="uncommited_changes_staged_all_items_action">Unstage all</string>
+    <string name="uncommited_changes_staged_selected_items_action">Unstage selected</string>
     <string name="uncommited_changes_staged_item_action">Unstage</string>
 
     <string name="uncommited_changes_text_input_label_message_read_only">Commit message (read-only)</string>

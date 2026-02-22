@@ -1,6 +1,7 @@
 package com.jetpackduba.gitnuro.ui.context_menu
 
 import com.jetpackduba.gitnuro.generated.resources.*
+import com.jetpackduba.gitnuro.git.EntryType
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 

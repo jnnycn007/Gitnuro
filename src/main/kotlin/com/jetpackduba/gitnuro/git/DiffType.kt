@@ -5,9 +5,15 @@ import com.jetpackduba.gitnuro.extensions.toStatusType
 import com.jetpackduba.gitnuro.git.workspace.StatusEntry
 import com.jetpackduba.gitnuro.git.workspace.StatusType
 import org.eclipse.jgit.diff.DiffEntry
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
-sealed interface DiffType {
-    class CommitDiff(val diffEntry: DiffEntry) : DiffType {
+@OptIn(ExperimentalContracts::class)
+sealed class DiffType {
+    abstract val filePath: String
+    abstract val statusType: StatusType
+
+    data class CommitDiff(val diffEntry: DiffEntry) : DiffType() {
         override val filePath: String
             get() = diffEntry.filePath
 
@@ -15,7 +21,10 @@ sealed interface DiffType {
             get() = diffEntry.toStatusType()
     }
 
-    sealed class UncommittedDiff(val statusEntry: StatusEntry) : DiffType {
+    /**
+     * @param safe Is repository with state [org.eclipse.jgit.lib.RepositoryState.SAFE] when loading that status entry
+     */
+    data class UncommittedDiff(val statusEntry: StatusEntry, val entryType: EntryType, val safe: Boolean) : DiffType() {
         override val filePath: String
             get() = statusEntry.filePath
 
@@ -23,23 +32,16 @@ sealed interface DiffType {
             get() = statusEntry.statusType
     }
 
-    sealed class UnstagedDiff(statusEntry: StatusEntry) : UncommittedDiff(statusEntry)
-    sealed class StagedDiff(statusEntry: StatusEntry) : UncommittedDiff(statusEntry)
+    val isStagedDiff: Boolean
+        get() {
+            contract { returns(true) implies (this@DiffType is UncommittedDiff) }
+            return this is UncommittedDiff && this.entryType == EntryType.STAGED
+        }
 
-    /**
-     * State used to represent staged changes when the repository state is not [org.eclipse.jgit.lib.RepositoryState.SAFE]
-     */
-    class UnsafeStagedDiff(statusEntry: StatusEntry) : StagedDiff(statusEntry)
-
-    /**
-     * State used to represent unstaged changes when the repository state is not [org.eclipse.jgit.lib.RepositoryState.SAFE]
-     */
-    class UnsafeUnstagedDiff(statusEntry: StatusEntry) : UnstagedDiff(statusEntry)
-
-    class SafeStagedDiff(statusEntry: StatusEntry) : StagedDiff(statusEntry)
-    class SafeUnstagedDiff(statusEntry: StatusEntry) : UnstagedDiff(statusEntry)
-
-    val filePath: String
-    val statusType: StatusType
+    val isUnstagedDiff: Boolean
+        get() {
+            contract { returns(true) implies (this@DiffType is UncommittedDiff) }
+            return this is UncommittedDiff && this.entryType == EntryType.UNSTAGED
+        }
 
 }

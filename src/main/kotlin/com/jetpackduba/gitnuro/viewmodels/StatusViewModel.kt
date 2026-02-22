@@ -1,13 +1,14 @@
 package com.jetpackduba.gitnuro.viewmodels
 
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
+import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.text.input.TextFieldValue
 import com.jetpackduba.gitnuro.SharedRepositoryStateManager
 import com.jetpackduba.gitnuro.TaskType
 import com.jetpackduba.gitnuro.extensions.*
-import com.jetpackduba.gitnuro.git.CloseableView
-import com.jetpackduba.gitnuro.git.RefreshType
-import com.jetpackduba.gitnuro.git.TabState
+import com.jetpackduba.gitnuro.git.*
 import com.jetpackduba.gitnuro.git.author.LoadAuthorUseCase
 import com.jetpackduba.gitnuro.git.author.SaveAuthorUseCase
 import com.jetpackduba.gitnuro.git.log.GetLastCommitMessageUseCase
@@ -21,6 +22,8 @@ import com.jetpackduba.gitnuro.git.workspace.*
 import com.jetpackduba.gitnuro.models.AuthorInfo
 import com.jetpackduba.gitnuro.models.positiveNotification
 import com.jetpackduba.gitnuro.repositories.AppSettingsRepository
+import com.jetpackduba.gitnuro.repositories.DiffSelected
+import com.jetpackduba.gitnuro.repositories.SelectedDiffItemRepository
 import com.jetpackduba.gitnuro.ui.tree_files.TreeItem
 import com.jetpackduba.gitnuro.ui.tree_files.entriesToTreeEntry
 import kotlinx.coroutines.*
@@ -30,7 +33,8 @@ import org.eclipse.jgit.lib.PersonIdent
 import org.eclipse.jgit.lib.RepositoryState
 import java.io.File
 import javax.inject.Inject
-import kotlin.collections.map
+import kotlin.math.max
+import kotlin.math.min
 
 private const val MIN_TIME_IN_MS_TO_SHOW_LOAD = 500L
 
@@ -59,6 +63,7 @@ class StatusViewModel @Inject constructor(
     private val getSpecificCommitMessageUseCase: GetSpecificCommitMessageUseCase,
     private val appSettingsRepository: AppSettingsRepository,
     private val tabScope: CoroutineScope,
+    private val selectedDiffItemRepository: SelectedDiffItemRepository,
 ) {
     private val _showSearchUnstaged = MutableStateFlow(false)
     val showSearchUnstaged: StateFlow<Boolean> = _showSearchUnstaged
@@ -71,6 +76,18 @@ class StatusViewModel @Inject constructor(
 
     private val _searchFilterStaged = MutableStateFlow(TextFieldValue(""))
     val searchFilterStaged: StateFlow<TextFieldValue> = _searchFilterStaged
+
+    val selectedStagedDiffEntries = selectedDiffItemRepository
+        .diffSelected
+        .map { diffSelected ->
+            getDiffSelectedEntriesByEntryType(diffSelected, EntryType.STAGED)
+        }
+
+    val selectedUnstagedDiffEntries = selectedDiffItemRepository
+        .diffSelected
+        .map { diffSelected ->
+            getDiffSelectedEntriesByEntryType(diffSelected, EntryType.UNSTAGED)
+        }
 
     val swapUncommittedChanges = appSettingsRepository.swapUncommittedChangesFlow
     val rebaseInteractiveState = sharedRepositoryStateManager.rebaseInteractiveState
@@ -120,7 +137,11 @@ class StatusViewModel @Inject constructor(
         when (stageStateFiltered) {
             is StageState.Loaded -> {
                 StageStateUi.Loaded(
-                    staged = entriesToTreeEntry(showAsTree, stageStateFiltered.staged, contractedDirectories) { it.filePath },
+                    staged = entriesToTreeEntry(
+                        showAsTree,
+                        stageStateFiltered.staged,
+                        contractedDirectories
+                    ) { it.filePath },
                     unstaged = entriesToTreeEntry(
                         showAsTree,
                         stageStateFiltered.unstaged,
@@ -229,6 +250,19 @@ class StatusViewModel @Inject constructor(
         } else if (git.repository.repositoryState == RepositoryState.SAFE) {
             git.repository.writeCommitEditMsg(messageToPersist)
         }
+    }
+
+    private fun getDiffSelectedEntriesByEntryType(
+        diffSelected: DiffSelected?,
+        entryType: EntryType
+    ): List<DiffType.UncommittedDiff> {
+        val diffUncommited = diffSelected as? DiffSelected.UncommittedChanges
+
+        return if (diffUncommited?.entryType == entryType) {
+            diffUncommited.items
+        } else {
+            emptySet()
+        }.toList()
     }
 
     fun stage(statusEntry: StatusEntry) = tabState.runOperation(
@@ -615,6 +649,86 @@ class StatusViewModel @Inject constructor(
 
     private fun removeSearchFromCloseView(view: CloseableView) = tabScope.launch {
         tabState.removeCloseableView(view)
+    }
+
+    fun selectEntries(
+        keyboardModifiers: PointerKeyboardModifiers,
+        diffEntries: List<TreeItem<StatusEntry>>,
+        selectedEntries: List<DiffType.UncommittedDiff>,
+        entryType: EntryType,
+        entry: StatusEntry,
+    ) {
+        val (entries, addToExisting) = getEntriesToSelect(
+            keyboardModifiers = keyboardModifiers,
+            diffEntries = diffEntries,
+            selectedEntries = selectedEntries,
+            entry = entry,
+        )
+
+        this.selectEntries(entryType, entries, addToExisting)
+    }
+
+    private fun getEntriesToSelect(
+        keyboardModifiers: PointerKeyboardModifiers,
+        diffEntries: List<TreeItem<StatusEntry>>,
+        selectedEntries: List<DiffType.UncommittedDiff>,
+        entry: StatusEntry,
+    ): Pair<List<StatusEntry>, Boolean> {
+        return when {
+            keyboardModifiers.isShiftPressed -> {
+                val entries =
+                    getEntriesInBetween(
+                        diffEntries,
+                        selectedEntries,
+                        entry,
+                    )
+
+                entries to true
+            }
+
+            keyboardModifiers.isCtrlPressed -> listOf(entry) to true
+            else -> listOf(entry) to false
+        }
+    }
+
+    private fun getEntriesInBetween(
+        diffEntries: List<TreeItem<StatusEntry>>,
+        selectedEntries: List<DiffType>,
+        entry: StatusEntry,
+    ): List<StatusEntry> {
+        val entries = diffEntries
+            .filterIsInstance<TreeItem.File<StatusEntry>>()
+            .map { it.data }
+
+        val last = selectedEntries.lastOrNull()
+
+        return if (last == null) {
+            listOf(entry)
+        } else {
+            // Should always be uncommitted diff at this point
+            val statusEntry = (last as DiffType.UncommittedDiff).statusEntry
+            val lastItemIndex = entries.indexOf(statusEntry)
+            val selectedItemIndex = entries.indexOf(entry)
+
+            val entriesToSelect =
+                entries.subList(min(lastItemIndex, selectedItemIndex), max(lastItemIndex, selectedItemIndex) + 1)
+
+            entriesToSelect
+        }
+    }
+
+    fun selectEntries(entryType: EntryType, entries: List<StatusEntry>, addToExisting: Boolean) {
+        selectedDiffItemRepository.addDiffUncommited(
+            entries.map {
+                DiffType.UncommittedDiff(
+                    it,
+                    entryType,
+                    safe = true
+                )
+            },
+            addToExisting,
+            entryType,
+        )
     }
 }
 

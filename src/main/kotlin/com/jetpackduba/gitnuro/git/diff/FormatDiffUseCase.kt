@@ -3,6 +3,7 @@ package com.jetpackduba.gitnuro.git.diff
 import com.jetpackduba.gitnuro.extensions.filePath
 import com.jetpackduba.gitnuro.git.DiffType
 import com.jetpackduba.gitnuro.git.EntryContent
+import com.jetpackduba.gitnuro.git.EntryType
 import com.jetpackduba.gitnuro.git.submodules.GetSubmodulesUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.joinAll
@@ -41,7 +42,7 @@ class FormatDiffUseCase @Inject constructor(
             val oldTree: DirCacheIterator?
             val newTree: FileTreeIterator?
 
-            if (diffType is DiffType.UnstagedDiff) {
+            if (diffType is DiffType.UncommittedDiff && diffType.entryType == EntryType.UNSTAGED) {
                 oldTree = DirCacheIterator(repository.readDirCache())
                 newTree = FileTreeIterator(repository)
             } else {

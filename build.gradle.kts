@@ -124,7 +124,7 @@ kotlin {
 tasks.named("compileKotlin", org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask::class.java) {
     compilerOptions {
         allWarningsAsErrors.set(false)
-        freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
+        freeCompilerArgs.addAll("-opt-in=kotlin.RequiresOptIn", "-Xexplicit-backing-fields")
     }
 }
 

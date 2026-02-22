@@ -32,6 +32,7 @@ import org.jetbrains.compose.resources.painterResource
 data class ActionInfo(
     val applyToOneTitle: String,
     val applyToAllTitle: String,
+    val applyToSelectedTitle: String,
     val icon: DrawableResource,
     val color: Color,
     val textColor: Color,
@@ -42,6 +43,7 @@ fun FilesChangedHeader(
     title: String,
     showAsTree: Boolean,
     showSearch: Boolean,
+    showActionForSelected: Boolean,
     actionInfo: ActionInfo? = null,
     onAllAction: (() -> Unit)? = null,
     onAlternateShowAsTree: () -> Unit,
@@ -113,7 +115,7 @@ fun FilesChangedHeader(
 
             if (actionInfo != null && onAllAction != null) {
                 SecondaryButtonCompactable(
-                    text = actionInfo.applyToAllTitle,
+                    text = if (showActionForSelected) actionInfo.applyToSelectedTitle else actionInfo.applyToAllTitle,
                     icon = actionInfo.icon,
                     isParentHovered = isHeaderHovered,
                     backgroundButton = actionInfo.color,

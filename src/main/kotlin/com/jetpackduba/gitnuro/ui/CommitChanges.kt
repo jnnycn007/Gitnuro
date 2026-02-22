@@ -8,24 +8,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.*
+import androidx.compose.material.LinearProgressIndicator
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jetpackduba.gitnuro.LocalTabFocusRequester
 import com.jetpackduba.gitnuro.extensions.*
-import com.jetpackduba.gitnuro.generated.resources.Res
-import com.jetpackduba.gitnuro.generated.resources.list
-import com.jetpackduba.gitnuro.generated.resources.search
-import com.jetpackduba.gitnuro.generated.resources.tree
 import com.jetpackduba.gitnuro.git.DiffType
 import com.jetpackduba.gitnuro.theme.onBackgroundSecondary
 import com.jetpackduba.gitnuro.theme.tertiarySurface
@@ -41,18 +36,17 @@ import kotlinx.coroutines.launch
 import org.eclipse.jgit.diff.DiffEntry
 import org.eclipse.jgit.lib.PersonIdent
 import org.eclipse.jgit.revwalk.RevCommit
-import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun CommitChanges(
     commitChangesViewModel: CommitChangesViewModel,
     selectedItem: SelectedItem.CommitBasedItem,
     onDiffSelected: (DiffEntry) -> Unit,
-    diffSelected: DiffType?,
     onBlame: (String) -> Unit,
     onHistory: (String) -> Unit,
 ) {
     val tabFocusRequester = LocalTabFocusRequester.current
+    val diffSelected by commitChangesViewModel.diffSelected.collectAsState(null)
 
     LaunchedEffect(selectedItem) {
         commitChangesViewModel.loadChanges(selectedItem.revCommit)
@@ -83,7 +77,7 @@ fun CommitChanges(
 
         is CommitChangesStateUi.Loaded -> {
             CommitChangesView(
-                diffSelected = diffSelected,
+                diffSelected = diffSelected?.items.orEmpty().toList(),
                 commitChangesStatus = commitChangesStatus,
                 onBlame = onBlame,
                 onHistory = onHistory,
@@ -93,7 +87,10 @@ fun CommitChanges(
                 changesListScroll = changesListScroll,
                 textScroll = textScroll,
                 searchFilter = searchFilter,
-                onDiffSelected = onDiffSelected,
+                onDiffSelected = {
+                    onDiffSelected(it)
+                    commitChangesViewModel.selectEntries(listOf(it)) // TODO pass proper list
+                },
                 onSearchFilterToggled = { visible ->
                     commitChangesViewModel.onSearchFilterToggled(visible)
                 },
@@ -114,7 +111,7 @@ fun CommitChanges(
 @Composable
 private fun CommitChangesView(
     commitChangesStatus: CommitChangesStateUi.Loaded,
-    diffSelected: DiffType?,
+    diffSelected: List<DiffType>,
     changesListScroll: LazyListState,
     textScroll: ScrollState,
     showSearch: Boolean,
@@ -145,7 +142,7 @@ private fun CommitChangesView(
                 .weight(1f, fill = true)
                 .background(MaterialTheme.colors.background)
         ) {
-            FilesChangedHeader (
+            FilesChangedHeader(
                 title = "Files changed",
                 showAsTree = showAsTree,
                 showSearch = showSearch,
@@ -154,6 +151,7 @@ private fun CommitChangesView(
                 onSearchFocused = onSearchFocused,
                 onSearchFilterToggled = onSearchFilterToggled,
                 onSearchFilterChanged = onSearchFilterChanged,
+                showActionForSelected = false, // FIXME temporary fix
             )
 
             when (commitChangesStatus) {

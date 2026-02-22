@@ -74,14 +74,14 @@ fun SecondaryButtonCompactable(
 ) {
     val hoverInteraction = remember { MutableInteractionSource() }
     val isHovered by hoverInteraction.collectIsHoveredAsState()
-    var isExpanded by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(true) }
 
     LaunchedEffect(isHovered, isParentHovered) {
-        isExpanded = when {
-            isHovered -> true
-            isExpanded && isParentHovered -> true
-            else -> false
-        }
+//        isExpanded = when {
+//            isHovered -> true
+//            isExpanded && isParentHovered -> true
+//            else -> false
+//        }
     }
 
     val targetBackground: Color

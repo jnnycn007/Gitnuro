@@ -10,12 +10,14 @@ import com.jetpackduba.gitnuro.git.TabState
 import com.jetpackduba.gitnuro.git.diff.*
 import com.jetpackduba.gitnuro.git.workspace.*
 import com.jetpackduba.gitnuro.repositories.AppSettingsRepository
+import com.jetpackduba.gitnuro.repositories.SelectedDiffItemRepository
 import com.jetpackduba.gitnuro.system.OpenFileInExternalAppUseCase
 import com.jetpackduba.gitnuro.ui.TabsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import org.eclipse.jgit.diff.DiffEntry
@@ -39,9 +41,18 @@ class DiffViewModel @Inject constructor(
     private val discardUnstagedHunkLineUseCase: DiscardUnstagedHunkLineUseCase,
     private val tabsManager: TabsManager,
     private val tabScope: CoroutineScope,
-) : AutoCloseable {
+    private val selectedDiffTypeRepository: SelectedDiffItemRepository,
+) {
     private val _diffResult = MutableStateFlow<ViewDiffResult>(ViewDiffResult.Loading(""))
     val diffResult: StateFlow<ViewDiffResult?> = _diffResult
+
+//    val diffResult2: StateFlow<ViewDiffResult?> = selectedDiffTypeRepository.diffSelected.map { diffSelected ->
+//        if (diffSelected == null) {
+//            return@map null
+//        }
+//
+//        updateDiff()
+//    }
 
     val closeViewFlow = tabState.closeViewFlow
 
@@ -85,6 +96,16 @@ class DiffViewModel @Inject constructor(
                 }
             }
         }
+
+        tabScope.launch {
+            selectedDiffTypeRepository.diffSelected.collectLatest { diffSelected ->
+                if (diffSelected != null && diffSelected.entries.count() == 1) {
+                    updateDiff(diffSelected.entries.first())
+                } else {
+                    reset()
+                }
+            }
+        }
     }
 
     val lazyListState = MutableStateFlow(
@@ -94,7 +115,7 @@ class DiffViewModel @Inject constructor(
         )
     )
 
-    fun updateDiff(diffType: DiffType) {
+    private fun updateDiff(diffType: DiffType) {
         addToCloseables()
 
         diffJob = tabState.runOperation(refreshType = RefreshType.NONE) { git ->
@@ -237,9 +258,14 @@ class DiffViewModel @Inject constructor(
         tabState.removeCloseableView(CloseableView.DIFF)
     }
 
-    override fun close() {
+    fun reset() {
         cancelRunningJobs()
         removeFromCloseables()
+        _diffResult.value = ViewDiffResult.None
+    }
+
+    fun clearDiff() {
+        selectedDiffTypeRepository.clearDiff()
     }
 }
 

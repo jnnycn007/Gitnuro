@@ -35,10 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jetpackduba.gitnuro.extensions.*
 import com.jetpackduba.gitnuro.generated.resources.*
-import com.jetpackduba.gitnuro.git.CloseableView
-import com.jetpackduba.gitnuro.git.DiffType
-import com.jetpackduba.gitnuro.git.EntryContent
-import com.jetpackduba.gitnuro.git.animatedImages
+import com.jetpackduba.gitnuro.git.*
 import com.jetpackduba.gitnuro.git.diff.*
 import com.jetpackduba.gitnuro.git.workspace.StatusEntry
 import com.jetpackduba.gitnuro.git.workspace.StatusType
@@ -90,9 +87,14 @@ fun Diff(
     val viewDiffResult = diffResultState.value ?: return
     val focusRequester = remember { FocusRequester() }
 
+    fun closeDiffView() {
+        diffViewModel.clearDiff()
+        onCloseDiffView()
+    }
+
     LaunchedEffect(Unit) {
         diffViewModel.closeViewFlow.collectLatest {
-            if (it == CloseableView.DIFF) onCloseDiffView()
+            if (it == CloseableView.DIFF) closeDiffView()
         }
     }
 
@@ -110,7 +112,7 @@ fun Diff(
     ) {
         when (viewDiffResult) {
             ViewDiffResult.DiffNotFound -> {
-                onCloseDiffView()
+                closeDiffView()
             }
 
             is ViewDiffResult.Loaded -> {
@@ -121,7 +123,7 @@ fun Diff(
                 DiffHeader(
                     diffType = diffType,
                     diffEntry = diffEntry,
-                    onCloseDiffView = onCloseDiffView,
+                    onCloseDiffView = { closeDiffView() },
                     textDiffType = textDiffType,
                     isTextDiff = diffResult is DiffResult.TextDiff,
                     isDisplayFullFile = isDisplayFullFile,
@@ -148,10 +150,13 @@ fun Diff(
                             diffViewModel.resetHunk(entry, hunk)
                         },
                         onUnStageLine = { entry, hunk, line ->
-                            if (diffType is DiffType.UnstagedDiff)
-                                diffViewModel.stageHunkLine(entry, hunk, line)
-                            else if (diffType is DiffType.StagedDiff)
-                                diffViewModel.unstageHunkLine(entry, hunk, line)
+                            if (diffType is DiffType.UncommittedDiff) {
+                                if (diffType.entryType == EntryType.STAGED)
+                                    diffViewModel.unstageHunkLine(entry, hunk, line)
+                                else {
+                                    diffViewModel.stageHunkLine(entry, hunk, line)
+                                }
+                            }
                         },
                         onDiscardLine = { entry, hunk, line ->
                             diffViewModel.discardHunkLine(entry, hunk, line)
@@ -172,10 +177,13 @@ fun Diff(
                             diffViewModel.resetHunk(entry, hunk)
                         },
                         onUnStageLine = { entry, hunk, line ->
-                            if (diffType is DiffType.UnstagedDiff)
-                                diffViewModel.stageHunkLine(entry, hunk, line)
-                            else if (diffType is DiffType.StagedDiff)
-                                diffViewModel.unstageHunkLine(entry, hunk, line)
+                            if (diffType is DiffType.UncommittedDiff) {
+                                if (diffType.entryType == EntryType.STAGED)
+                                    diffViewModel.unstageHunkLine(entry, hunk, line)
+                                else {
+                                    diffViewModel.stageHunkLine(entry, hunk, line)
+                                }
+                            }
                         },
                         onDiscardLine = { entry, hunk, line ->
                             diffViewModel.discardHunkLine(entry, hunk, line)
@@ -199,7 +207,7 @@ fun Diff(
 
             is ViewDiffResult.Loading -> {
                 Column {
-                    PathOnlyDiffHeader(filePath = viewDiffResult.filePath, onCloseDiffView = onCloseDiffView)
+                    PathOnlyDiffHeader(filePath = viewDiffResult.filePath, onCloseDiffView = { closeDiffView() })
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colors.primaryVariant
@@ -208,7 +216,15 @@ fun Diff(
 
             }
 
-            ViewDiffResult.None -> throw NotImplementedError("None should be a possible state in the diff")
+            ViewDiffResult.None -> {
+                Column {
+                    PathOnlyDiffHeader(filePath = "", onCloseDiffView = { closeDiffView() })
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colors.primaryVariant
+                    )
+                }
+            }
         }
     }
 }
@@ -719,7 +735,8 @@ fun DiffContextMenu(
         items = {
             if (
                 line.lineType != LineType.CONTEXT &&
-                diffType is DiffType.UnstagedDiff &&
+                diffType is DiffType.UncommittedDiff &&
+                diffType.entryType == EntryType.UNSTAGED &&
                 diffType.statusType == StatusType.MODIFIED
             ) {
                 listOf(
@@ -770,12 +787,12 @@ fun HunkHeader(
 
         // Hunks options are only visible when repository is a normal state (not during merge/rebase)
         if (
-            (diffType is DiffType.SafeStagedDiff || diffType is DiffType.SafeUnstagedDiff) &&
+            (diffType is DiffType.UncommittedDiff && diffType.safe) &&
             diffType.statusType == StatusType.MODIFIED
         ) {
             val buttonText: String
             val color: Color
-            if (diffType is DiffType.StagedDiff) {
+            if (diffType.entryType == EntryType.STAGED) {
                 buttonText = "Unstage hunk"
                 color = MaterialTheme.colors.error
             } else {
@@ -783,7 +800,7 @@ fun HunkHeader(
                 color = MaterialTheme.colors.primary
             }
 
-            if (diffType is DiffType.UnstagedDiff) {
+            if (diffType.entryType == EntryType.UNSTAGED) {
                 SecondaryButton(
                     text = "Discard hunk",
                     backgroundButton = MaterialTheme.colors.error,
@@ -798,7 +815,7 @@ fun HunkHeader(
                 backgroundButton = color,
                 modifier = Modifier.padding(horizontal = 16.dp),
                 onClick = {
-                    if (diffType is DiffType.StagedDiff) {
+                    if (diffType.entryType == EntryType.STAGED) {
                         onUnstageHunk()
                     } else {
                         onStageHunk()
@@ -1000,7 +1017,7 @@ fun UncommittedDiffFileHeaderButtons(
     val buttonText: String
     val color: Color
 
-    if (diffType is DiffType.StagedDiff) {
+    if (diffType.entryType == EntryType.STAGED) {
         buttonText = "Unstage file"
         color = MaterialTheme.colors.error
     } else {
@@ -1012,7 +1029,7 @@ fun UncommittedDiffFileHeaderButtons(
         text = buttonText,
         backgroundButton = color,
         onClick = {
-            if (diffType is DiffType.StagedDiff) {
+            if (diffType.entryType == EntryType.STAGED) {
                 onUnstageFile(diffType.statusEntry)
             } else {
                 onStageFile(diffType.statusEntry)
@@ -1149,14 +1166,14 @@ fun DiffLineText(line: Line, diffType: DiffType, onActionTriggered: () -> Unit) 
             line.lineType != LineType.CONTEXT &&
             diffType.statusType == StatusType.MODIFIED
         ) {
-            val color: Color = if (diffType is DiffType.StagedDiff) {
+            val color: Color = if (diffType.entryType == EntryType.STAGED) {
                 MaterialTheme.colors.error
             } else {
                 MaterialTheme.colors.primary
             }
 
             val iconName = remember(diffType) {
-                if (diffType is DiffType.StagedDiff) {
+                if (diffType.entryType == EntryType.STAGED) {
                     Res.drawable.remove
                 } else {
                     Res.drawable.add

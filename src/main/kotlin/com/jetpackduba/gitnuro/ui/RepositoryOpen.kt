@@ -14,12 +14,14 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.jetpackduba.gitnuro.LocalTabFocusRequester
+import com.jetpackduba.gitnuro.extensions.countOrZero
 import com.jetpackduba.gitnuro.extensions.handMouseClickable
 import com.jetpackduba.gitnuro.generated.resources.Res
 import com.jetpackduba.gitnuro.generated.resources.bottom_info_bar_email_not_set
 import com.jetpackduba.gitnuro.generated.resources.bottom_info_bar_name_and_email
 import com.jetpackduba.gitnuro.generated.resources.bottom_info_bar_name_not_set
 import com.jetpackduba.gitnuro.git.DiffType
+import com.jetpackduba.gitnuro.git.EntryType
 import com.jetpackduba.gitnuro.git.rebase.RebaseInteractiveState
 import com.jetpackduba.gitnuro.git.remote_operations.PullType
 import com.jetpackduba.gitnuro.keybindings.KeybindingOption
@@ -46,7 +48,6 @@ fun RepositoryOpenPage(
     onShowCloneDialog: () -> Unit,
 ) {
     val repositoryState by repositoryOpenViewModel.repositoryState.collectAsState()
-    val diffSelected by repositoryOpenViewModel.diffSelected.collectAsState()
     val selectedItem by repositoryOpenViewModel.selectedItem.collectAsState()
     val blameState by repositoryOpenViewModel.blameState.collectAsState()
     val showHistory by repositoryOpenViewModel.showHistory.collectAsState()
@@ -199,7 +200,6 @@ fun RepositoryOpenPage(
 
                 RepoContent(
                     repositoryOpenViewModel = repositoryOpenViewModel,
-                    diffSelected = diffSelected,
                     selectedItem = selectedItem,
                     repositoryState = repositoryState,
                     blameState = blameState,
@@ -265,7 +265,6 @@ private fun RepositoryOpenBottomInfoBar(
 @Composable
 fun RepoContent(
     repositoryOpenViewModel: RepositoryOpenViewModel,
-    diffSelected: DiffType?,
     selectedItem: SelectedItem,
     repositoryState: RepositoryState,
     blameState: BlameState,
@@ -284,11 +283,10 @@ fun RepoContent(
         }
     } else {
         MainContentView(
-            repositoryOpenViewModel,
-            diffSelected,
-            selectedItem,
-            repositoryState,
-            blameState,
+            repositoryOpenViewModel = repositoryOpenViewModel,
+            selectedItem = selectedItem,
+            repositoryState = repositoryState,
+            blameState = blameState,
         )
     }
 }
@@ -296,11 +294,11 @@ fun RepoContent(
 @Composable
 fun MainContentView(
     repositoryOpenViewModel: RepositoryOpenViewModel,
-    diffSelected: DiffType?,
     selectedItem: SelectedItem,
     repositoryState: RepositoryState,
     blameState: BlameState,
 ) {
+    val diffSelected by repositoryOpenViewModel.diffSelected.collectAsState()
     val rebaseInteractiveState by repositoryOpenViewModel.rebaseInteractiveState.collectAsState()
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()
@@ -332,7 +330,7 @@ fun MainContentView(
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                if (rebaseInteractiveState == RebaseInteractiveState.AwaitingInteraction && diffSelected == null) {
+                if (rebaseInteractiveState == RebaseInteractiveState.AwaitingInteraction /*&& diffSelected == null*/) {
                     RebaseInteractive(repositoryOpenViewModel.tabViewModelsProvider.rebaseInteractiveViewModel)
                 } else if (blameState is BlameState.Loaded && !blameState.isMinimized) {
                     Blame(
@@ -344,30 +342,23 @@ fun MainContentView(
                 } else {
                     Column {
                         Box(modifier = Modifier.weight(1f, true)) {
-                            when (diffSelected) {
-                                null -> {
-                                    Log(
-                                        logViewModel = repositoryOpenViewModel.tabViewModelsProvider.logViewModel,
-                                        selectedItem = selectedItem,
-                                        repositoryState = repositoryState,
-                                        viewModelsProvider = repositoryOpenViewModel.tabViewModelsProvider,
-                                    )
-                                }
+                            if (diffSelected?.entries?.count() == 1) {
+                                val diffViewModel = repositoryOpenViewModel.diffViewModel
+                                val tabFocusRequester = LocalTabFocusRequester.current
 
-                                else -> {
-                                    val diffViewModel = repositoryOpenViewModel.diffViewModel
-
-                                    if (diffViewModel != null) {
-                                        val tabFocusRequester = LocalTabFocusRequester.current
-                                        Diff(
-                                            diffViewModel = diffViewModel,
-                                            onCloseDiffView = {
-                                                repositoryOpenViewModel.newDiffSelected = null
-                                                tabFocusRequester.requestFocus()
-                                            }
-                                        )
+                                Diff(
+                                    diffViewModel = diffViewModel,
+                                    onCloseDiffView = {
+                                        tabFocusRequester.requestFocus()
                                     }
-                                }
+                                )
+                            } else {
+                                Log(
+                                    logViewModel = repositoryOpenViewModel.tabViewModelsProvider.logViewModel,
+                                    selectedItem = selectedItem,
+                                    repositoryState = repositoryState,
+                                    viewModelsProvider = repositoryOpenViewModel.tabViewModelsProvider,
+                                )
                             }
                         }
 
@@ -391,28 +382,7 @@ fun MainContentView(
                     SelectedItem.UncommittedChanges -> {
                         UncommittedChanges(
                             statusViewModel = repositoryOpenViewModel.tabViewModelsProvider.statusViewModel,
-                            selectedEntryType = diffSelected,
                             repositoryState = repositoryState,
-                            onStagedDiffEntrySelected = { diffEntry ->
-                                repositoryOpenViewModel.minimizeBlame()
-
-                                repositoryOpenViewModel.newDiffSelected = if (diffEntry != null) {
-                                    if (repositoryState == RepositoryState.SAFE)
-                                        DiffType.SafeStagedDiff(diffEntry)
-                                    else
-                                        DiffType.UnsafeStagedDiff(diffEntry)
-                                } else {
-                                    null
-                                }
-                            },
-                            onUnstagedDiffEntrySelected = { diffEntry ->
-                                repositoryOpenViewModel.minimizeBlame()
-
-                                if (repositoryState == RepositoryState.SAFE)
-                                    repositoryOpenViewModel.newDiffSelected = DiffType.SafeUnstagedDiff(diffEntry)
-                                else
-                                    repositoryOpenViewModel.newDiffSelected = DiffType.UnsafeUnstagedDiff(diffEntry)
-                            },
                             onBlameFile = { repositoryOpenViewModel.blameFile(it) },
                             onHistoryFile = { repositoryOpenViewModel.fileHistory(it) }
                         )
@@ -422,10 +392,8 @@ fun MainContentView(
                         CommitChanges(
                             commitChangesViewModel = repositoryOpenViewModel.tabViewModelsProvider.commitChangesViewModel,
                             selectedItem = selectedItem,
-                            diffSelected = diffSelected,
                             onDiffSelected = { diffEntry ->
                                 repositoryOpenViewModel.minimizeBlame()
-                                repositoryOpenViewModel.newDiffSelected = DiffType.CommitDiff(diffEntry)
                             },
                             onBlame = { repositoryOpenViewModel.blameFile(it) },
                             onHistory = { repositoryOpenViewModel.fileHistory(it) },

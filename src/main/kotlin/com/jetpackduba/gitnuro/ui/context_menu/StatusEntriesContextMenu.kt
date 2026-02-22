@@ -1,6 +1,7 @@
 package com.jetpackduba.gitnuro.ui.context_menu
 
 import com.jetpackduba.gitnuro.generated.resources.*
+import com.jetpackduba.gitnuro.git.EntryType
 import com.jetpackduba.gitnuro.git.workspace.StatusEntry
 import com.jetpackduba.gitnuro.git.workspace.StatusType
 import org.jetbrains.compose.resources.painterResource
@@ -55,10 +56,4 @@ fun statusEntriesContextMenuItems(
             onClick = onOpenFileInFolder,
         )
     }
-}
-
-
-enum class EntryType {
-    STAGED,
-    UNSTAGED,
 }
