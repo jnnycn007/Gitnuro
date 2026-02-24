@@ -10,9 +10,17 @@ class StageAllUseCase @Inject constructor(
     private val getStatusUseCase: GetStatusUseCase,
     private val getUnstagedUseCase: GetUnstagedUseCase,
 ) {
-    suspend operator fun invoke(git: Git): Unit = withContext(Dispatchers.IO) {
+    suspend operator fun invoke(git: Git, entries: List<StatusEntry>?): Unit = withContext(Dispatchers.IO) {
         val status = getStatusUseCase(git)
         val unstaged = getUnstagedUseCase(status)
+            .run {
+                if (entries != null) {
+                    this.filter { entries.contains(it) }
+                } else {
+                    this
+                }
+            }
+
 
         addAllExceptNew(git, unstaged.filter { it.statusType != StatusType.ADDED })
         addNewFiles(git, unstaged.filter { it.statusType == StatusType.ADDED })

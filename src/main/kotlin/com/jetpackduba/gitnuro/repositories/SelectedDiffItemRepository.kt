@@ -1,13 +1,11 @@
 package com.jetpackduba.gitnuro.repositories
 
 import com.jetpackduba.gitnuro.di.TabScope
-import com.jetpackduba.gitnuro.extensions.toMutableAndAddAll
 import com.jetpackduba.gitnuro.extensions.toMutableSetAndAddAll
 import com.jetpackduba.gitnuro.git.DiffType
 import com.jetpackduba.gitnuro.git.EntryType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import org.eclipse.jgit.revwalk.RevCommit
 import javax.inject.Inject
 
 
@@ -63,4 +61,19 @@ class SelectedDiffItemRepository @Inject constructor() {
         diffSelected.value = null
     }
 
+    fun removeSelectedUncommited(selectedToRemove: Set<DiffType.UncommittedDiff>, entryType: EntryType) {
+        val diffSelected = this.diffSelected.value
+
+        if (diffSelected is DiffSelected.UncommittedChanges && diffSelected.entryType == entryType) {
+            this.diffSelected.value = diffSelected.copy(items = diffSelected.items - selectedToRemove)
+        }
+    }
+
+    fun removeSelectedCommited(selectedToRemove: Set<DiffType.CommitDiff>, entryType: EntryType) {
+        val diffSelected = this.diffSelected.value
+
+        if (diffSelected is DiffSelected.CommitedChanges) {
+            this.diffSelected.value = diffSelected.copy(items = diffSelected.items - selectedToRemove)
+        }
+    }
 }

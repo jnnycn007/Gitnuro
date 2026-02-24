@@ -82,12 +82,22 @@ class StatusViewModel @Inject constructor(
         .map { diffSelected ->
             getDiffSelectedEntriesByEntryType(diffSelected, EntryType.STAGED)
         }
+        .stateIn(
+            tabScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
 
     val selectedUnstagedDiffEntries = selectedDiffItemRepository
         .diffSelected
         .map { diffSelected ->
             getDiffSelectedEntriesByEntryType(diffSelected, EntryType.UNSTAGED)
         }
+        .stateIn(
+            tabScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
 
     val swapUncommittedChanges = appSettingsRepository.swapUncommittedChangesFlow
     val rebaseInteractiveState = sharedRepositoryStateManager.rebaseInteractiveState
@@ -235,6 +245,33 @@ class StatusViewModel @Inject constructor(
                 }
             }
         }
+
+        tabScope.launch {
+            selectedDiffItemRepository
+                .diffSelected
+                .combine(_stageState) { diffSelected, state ->
+                    diffSelected to state
+                }
+                .collectLatest { (diffSelected, state) ->
+                    if (state is StageState.Loaded && diffSelected is DiffSelected.UncommittedChanges) {
+                        val entries = state.getEntriesByEntryType(diffSelected.entryType)
+
+                        val diffSelectedToRemove = diffSelected.items
+                            .asSequence()
+                            .filter { diff ->
+                                entries.none { statusEntry ->
+                                    statusEntry.filePath == diff.statusEntry.filePath
+                                }
+                            }
+                            .toSet()
+
+                        selectedDiffItemRepository.removeSelectedUncommited(
+                            selectedToRemove = diffSelectedToRemove,
+                            entryType = diffSelected.entryType
+                        )
+                    }
+                }
+        }
     }
 
     private fun persistMessage() = tabState.runOperation(
@@ -284,7 +321,13 @@ class StatusViewModel @Inject constructor(
         refreshType = RefreshType.UNCOMMITTED_CHANGES,
         taskType = TaskType.UNSTAGE_ALL_FILES,
     ) { git ->
-        unstageAllUseCase(git)
+        val entries = selectedStagedDiffEntries
+            .value
+            .ifEmpty { null }
+            ?.map { it.statusEntry }
+            ?.nullIf { it.count() == 1 }
+
+        unstageAllUseCase(git, entries)
 
         null
     }
@@ -293,7 +336,13 @@ class StatusViewModel @Inject constructor(
         refreshType = RefreshType.UNCOMMITTED_CHANGES,
         taskType = TaskType.STAGE_ALL_FILES,
     ) { git ->
-        stageAllUseCase(git)
+        val entries = selectedUnstagedDiffEntries
+            .value
+            .ifEmpty { null }
+            ?.map { it.statusEntry }
+            ?.nullIf { it.count() == 1 }
+
+        stageAllUseCase(git, entries)
 
         null
     }
@@ -740,7 +789,14 @@ sealed interface StageState {
         val unstaged: List<StatusEntry>,
         val filteredUnstaged: List<StatusEntry>,
         val isPartiallyReloading: Boolean,
-    ) : StageState
+    ) : StageState {
+        fun getEntriesByEntryType(entryType: EntryType): List<StatusEntry> {
+            return when (entryType) {
+                EntryType.STAGED -> staged
+                EntryType.UNSTAGED -> unstaged
+            }
+        }
+    }
 }
 
 

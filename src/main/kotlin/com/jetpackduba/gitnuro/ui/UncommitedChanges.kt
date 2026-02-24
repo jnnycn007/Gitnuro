@@ -75,8 +75,8 @@ fun UncommittedChanges(
     val committerDataRequestState = statusViewModel.committerDataRequestState.collectAsState()
     val committerDataRequestStateValue = committerDataRequestState.value
     val rebaseInteractiveState = statusViewModel.rebaseInteractiveState.collectAsState().value
-    val selectedUnstagedDiffEntries by statusViewModel.selectedUnstagedDiffEntries.collectAsState(emptyList())
-    val selectedStagedDiffEntries by statusViewModel.selectedStagedDiffEntries.collectAsState(emptyList())
+    val selectedUnstagedDiffEntries by statusViewModel.selectedUnstagedDiffEntries.collectAsState()
+    val selectedStagedDiffEntries by statusViewModel.selectedStagedDiffEntries.collectAsState()
 
     val showSearchStaged by statusViewModel.showSearchStaged.collectAsState()
     val showAsTree by statusViewModel.showAsTree.collectAsState()
@@ -89,7 +89,8 @@ fun UncommittedChanges(
 
     val doCommit = {
         statusViewModel.commit(commitMessage)
-        onStagedDiffEntrySelected(emptyList(), false)
+        Unit
+//        onStagedDiffEntrySelected(emptyList(), false)
     }
 
     val canCommit = commitMessage.isNotEmpty() && stageStateUi.hasStagedFiles

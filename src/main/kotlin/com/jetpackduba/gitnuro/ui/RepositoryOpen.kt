@@ -392,9 +392,6 @@ fun MainContentView(
                         CommitChanges(
                             commitChangesViewModel = repositoryOpenViewModel.tabViewModelsProvider.commitChangesViewModel,
                             selectedItem = selectedItem,
-                            onDiffSelected = { diffEntry ->
-                                repositoryOpenViewModel.minimizeBlame()
-                            },
                             onBlame = { repositoryOpenViewModel.blameFile(it) },
                             onHistory = { repositoryOpenViewModel.fileHistory(it) },
                         )
