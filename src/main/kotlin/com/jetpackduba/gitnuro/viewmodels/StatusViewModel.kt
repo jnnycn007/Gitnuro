@@ -265,13 +265,20 @@ class StatusViewModel @Inject constructor(
                             }
                             .toSet()
 
-                        selectedDiffItemRepository.removeSelectedUncommited(
-                            selectedToRemove = diffSelectedToRemove,
-                            entryType = diffSelected.entryType
-                        )
+                        removeEntriesFromSelection(diffSelectedToRemove, diffSelected.entryType)
                     }
                 }
         }
+    }
+
+    private fun removeEntriesFromSelection(
+        diffSelectedToRemove: Set<DiffType.UncommittedDiff>,
+        entryType: EntryType,
+    ) {
+        selectedDiffItemRepository.removeSelectedUncommited(
+            selectedToRemove = diffSelectedToRemove,
+            entryType = entryType,
+        )
     }
 
     private fun persistMessage() = tabState.runOperation(
@@ -707,14 +714,39 @@ class StatusViewModel @Inject constructor(
         entryType: EntryType,
         entry: StatusEntry,
     ) {
-        val (entries, addToExisting) = getEntriesToSelect(
+        val selectionType = getEntriesToSelect(
             keyboardModifiers = keyboardModifiers,
             diffEntries = diffEntries,
             selectedEntries = selectedEntries,
             entry = entry,
         )
 
-        this.selectEntries(entryType, entries, addToExisting)
+        when (selectionType) {
+            is SelectionType.AddMultipleEntries -> this.selectEntries(
+                entryType,
+                selectionType.entries,
+                addToExisting = true
+            )
+
+            is SelectionType.AppendSingleEntry -> this.selectEntries(
+                entryType,
+                listOf(selectionType.entry),
+                addToExisting = true,
+            )
+
+            is SelectionType.RemoveSingleEntry -> this.removeEntriesFromSelection(
+                setOf(DiffType.UncommittedDiff(selectionType.entry, entryType, true)),
+                entryType,
+            )
+
+            is SelectionType.SetSingleEntry -> this.selectEntries(
+                entryType,
+                listOf(selectionType.entry),
+                addToExisting = false,
+            )
+        }
+
+
     }
 
     private fun getEntriesToSelect(
@@ -722,7 +754,7 @@ class StatusViewModel @Inject constructor(
         diffEntries: List<TreeItem<StatusEntry>>,
         selectedEntries: List<DiffType.UncommittedDiff>,
         entry: StatusEntry,
-    ): Pair<List<StatusEntry>, Boolean> {
+    ): SelectionType<StatusEntry> {
         return when {
             keyboardModifiers.isShiftPressed -> {
                 val entries =
@@ -732,11 +764,21 @@ class StatusViewModel @Inject constructor(
                         entry,
                     )
 
-                entries to true
+                SelectionType.AddMultipleEntries(entries)
             }
 
-            keyboardModifiers.isCtrlPressed -> listOf(entry) to true
-            else -> listOf(entry) to false
+            keyboardModifiers.isCtrlPressed -> {
+
+                val isAlreadyPresent = selectedEntries.any { it.statusEntry == entry }
+
+                if (isAlreadyPresent) {
+                    SelectionType.RemoveSingleEntry(entry)
+                } else {
+                    SelectionType.AppendSingleEntry(entry)
+                }
+            }
+
+            else -> SelectionType.SetSingleEntry(entry)
         }
     }
 
@@ -779,6 +821,13 @@ class StatusViewModel @Inject constructor(
             entryType,
         )
     }
+}
+
+sealed interface SelectionType<T> {
+    data class SetSingleEntry<T>(val entry: T) : SelectionType<T>
+    data class AppendSingleEntry<T>(val entry: T) : SelectionType<T>
+    data class RemoveSingleEntry<T>(val entry: T) : SelectionType<T>
+    data class AddMultipleEntries<T>(val entries: List<T>) : SelectionType<T>
 }
 
 sealed interface StageState {
