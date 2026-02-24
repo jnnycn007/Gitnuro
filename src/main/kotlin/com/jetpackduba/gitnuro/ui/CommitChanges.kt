@@ -150,7 +150,7 @@ private fun CommitChangesView(
                 onSearchFocused = onSearchFocused,
                 onSearchFilterToggled = onSearchFilterToggled,
                 onSearchFilterChanged = onSearchFilterChanged,
-                showActionForSelected = false, // FIXME temporary fix
+                showActionForSelected = false,
             )
 
             when (commitChangesStatus) {

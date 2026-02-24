@@ -46,14 +46,6 @@ class DiffViewModel @Inject constructor(
     private val _diffResult = MutableStateFlow<ViewDiffResult>(ViewDiffResult.Loading(""))
     val diffResult: StateFlow<ViewDiffResult?> = _diffResult
 
-//    val diffResult2: StateFlow<ViewDiffResult?> = selectedDiffTypeRepository.diffSelected.map { diffSelected ->
-//        if (diffSelected == null) {
-//            return@map null
-//        }
-//
-//        updateDiff()
-//    }
-
     val closeViewFlow = tabState.closeViewFlow
 
     val diffTypeFlow = settings.textDiffTypeFlow

@@ -484,7 +484,6 @@ class StatusViewModel @Inject constructor(
         } else
             message
 
-
         val personIdent = getPersonIdent(git)
 
         doCommitUseCase(git, commitMessage, amend, personIdent)
@@ -745,8 +744,6 @@ class StatusViewModel @Inject constructor(
                 addToExisting = false,
             )
         }
-
-
     }
 
     private fun getEntriesToSelect(
@@ -768,7 +765,6 @@ class StatusViewModel @Inject constructor(
             }
 
             keyboardModifiers.isCtrlPressed -> {
-
                 val isAlreadyPresent = selectedEntries.any { it.statusEntry == entry }
 
                 if (isAlreadyPresent) {
