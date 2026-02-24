@@ -23,8 +23,8 @@ sealed class DiffSelected(val entries: Set<DiffType>) {
 
 @TabScope
 class SelectedDiffItemRepository @Inject constructor() {
-    val diffSelected: StateFlow<DiffSelected?>
-        field = MutableStateFlow<DiffSelected?>(null)
+    private val _diffSelected = MutableStateFlow<DiffSelected?>(null)
+    val diffSelected: StateFlow<DiffSelected?> = _diffSelected
 
     fun addDiffCommited(diffType: List<DiffType.CommitDiff>, addToExisting: Boolean = true) {
         val diffSelectedValue = diffSelected.value
@@ -36,7 +36,7 @@ class SelectedDiffItemRepository @Inject constructor() {
                 DiffSelected.CommitedChanges(diffType.toSet())
             }
 
-        diffSelected.value = newDiffSelected
+        _diffSelected.value = newDiffSelected
     }
 
     fun addDiffUncommited(
@@ -54,18 +54,18 @@ class SelectedDiffItemRepository @Inject constructor() {
             }
 
 
-        diffSelected.value = newDiffSelected
+        _diffSelected.value = newDiffSelected
     }
 
     fun clearDiff() {
-        diffSelected.value = null
+        _diffSelected.value = null
     }
 
     fun removeSelectedUncommited(selectedToRemove: Set<DiffType.UncommittedDiff>, entryType: EntryType) {
         val diffSelected = this.diffSelected.value
 
         if (diffSelected is DiffSelected.UncommittedChanges && diffSelected.entryType == entryType) {
-            this.diffSelected.value = diffSelected.copy(items = diffSelected.items - selectedToRemove)
+            this._diffSelected.value = diffSelected.copy(items = diffSelected.items - selectedToRemove)
         }
     }
 
@@ -73,7 +73,7 @@ class SelectedDiffItemRepository @Inject constructor() {
         val diffSelected = this.diffSelected.value
 
         if (diffSelected is DiffSelected.CommitedChanges) {
-            this.diffSelected.value = diffSelected.copy(items = diffSelected.items - selectedToRemove)
+            this._diffSelected.value = diffSelected.copy(items = diffSelected.items - selectedToRemove)
         }
     }
 }
