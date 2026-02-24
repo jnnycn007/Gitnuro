@@ -197,7 +197,7 @@ class CommitChangesViewModel @Inject constructor(
     fun selectEntries(entries: List<DiffEntry>) {
         selectedDiffItemRepository.addDiffCommited(
             diffType = entries.map { DiffType.CommitDiff(it) },
-            addToExisting = true,
+            addToExisting = false,
         )
     }
 
