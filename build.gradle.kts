@@ -50,18 +50,18 @@ repositories {
 dependencies {
 
     val composeDependency = when {
-        currentOs() == OS.LINUX && isLinuxAarch64 -> compose.desktop.linux_arm64
-        currentOs() == OS.MAC -> compose.desktop.macos_x64
-        else -> compose.desktop.currentOs
+        currentOs() == OS.LINUX && isLinuxAarch64 -> libs.compose.desktop.linux.arm64
+        currentOs() == OS.MAC -> libs.compose.desktop.macos.arm64
+        else -> libs.compose.desktop
     }
 
     implementation(composeDependency)
 
-    implementation(compose.uiUtil)
-    @OptIn(ExperimentalComposeLibrary::class)
-    implementation(compose.desktop.components.animatedImage)
-    implementation(compose.components.resources)
-    implementation(compose.materialIconsExtended)
+    implementation(libs.compose.ui.util)
+    implementation(libs.compose.components.animatedimage)
+    implementation(libs.compose.components.resources)
+    implementation(libs.compose.material.icons.extended)
+
     implementation(libs.jgit.core)
     implementation(libs.jgit.gpg)
     implementation(libs.jgit.lfs)

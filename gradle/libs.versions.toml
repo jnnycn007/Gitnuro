@@ -13,9 +13,18 @@ slf4j = "2.0.17"
 bouncycastle = "1.81"
 ktor = "3.3.2"
 coil = "3.3.0"
-
+compose = "1.10.0"
+materialExtended = "1.7.3"
 
 [libraries]
+compose-desktop-linux-arm64 = { group="org.jetbrains.compose.desktop", name ="desktop-jvm-linux-arm64", version.ref="compose" }
+compose-desktop-macos-arm64 = { group="org.jetbrains.compose.desktop", name ="desktop-jvm-macos-x64", version.ref="compose" }
+compose-desktop = { group="org.jetbrains.compose.desktop", name ="desktop", version.ref="compose" }
+compose-ui-util = { group = "org.jetbrains.compose.ui", name = "ui-util", version.ref = "compose" }
+compose-components-animatedimage = { group = "org.jetbrains.compose.components", name = "components-animatedimage", version.ref = "compose" }
+compose-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "compose" }
+compose-material-icons-extended = { group = "org.jetbrains.compose.material", name = "material-icons-extended", version.ref = "materialExtended" }
+
 
 jgit-core = { group = "org.eclipse.jgit", name = "org.eclipse.jgit", version.ref = "jgit" }
 jgit-gpg = { group = "org.eclipse.jgit", name = "org.eclipse.jgit.gpg.bc", version.ref = "jgit" }
