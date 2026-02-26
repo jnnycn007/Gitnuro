@@ -51,10 +51,10 @@ dependencies {
 
     val composeDependency = when {
         currentOs() == OS.LINUX && isLinuxAarch64 -> libs.compose.desktop.linux.arm64
-        currentOs() == OS.MAC -> libs.compose.desktop.macos.arm64
-        else -> libs.compose.desktop
+        else -> compose.desktop.currentOs
     }
 
+    println("composeDependency: $composeDependency")
     implementation(composeDependency)
 
     implementation(libs.compose.ui.util)
@@ -231,9 +231,11 @@ fun generateKotlinFromRs() {
         outDirFile.mkdirs()
     }
 
+    val kotarsBin = "cargo-kotars"
+
     // cargo-kotars must be preinstalled
     val command = listOf(
-        "cargo-kotars",
+        kotarsBin,
         "--kotlin-output",
         outDir,
     )
@@ -249,13 +251,13 @@ fun generateKotlinFromRs() {
 fun buildRust() {
     println("Build rs called")
     val binary = if (currentOs() == OS.LINUX && useCross) {
-        "cross"
+        arrayOf("cross")
     } else {
-        "cargo"
+        arrayOf("cargo")
     }
 
     val params = mutableListOf(
-        binary, "build",
+        *binary, "build",
     )
 
     if (isRustRelease) {
@@ -268,8 +270,6 @@ fun buildRust() {
         } else {
             params.add("--target=$linuxX64Target")
         }
-    } else if (currentOs() == OS.MAC) {
-        params.add("--target=x86_64-apple-darwin")
     }
 
     providers.exec {
@@ -294,7 +294,7 @@ fun copyRustBuild() {
             "rs/target/$linuxX64Target/$buildTypeDirectory"
         }
     } else if (currentOs() == OS.MAC) {
-        "rs/target/x86_64-apple-darwin/$buildTypeDirectory"
+        "rs/target/$buildTypeDirectory"
     } else {
         "rs/target/$buildTypeDirectory"
     }

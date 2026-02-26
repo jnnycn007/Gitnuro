@@ -18,8 +18,6 @@ materialExtended = "1.7.3"
 
 [libraries]
 compose-desktop-linux-arm64 = { group="org.jetbrains.compose.desktop", name ="desktop-jvm-linux-arm64", version.ref="compose" }
-compose-desktop-macos-arm64 = { group="org.jetbrains.compose.desktop", name ="desktop-jvm-macos-x64", version.ref="compose" }
-compose-desktop = { group="org.jetbrains.compose.desktop", name ="desktop", version.ref="compose" }
 compose-ui-util = { group = "org.jetbrains.compose.ui", name = "ui-util", version.ref = "compose" }
 compose-components-animatedimage = { group = "org.jetbrains.compose.components", name = "components-animatedimage", version.ref = "compose" }
 compose-components-resources = { group = "org.jetbrains.compose.components", name = "components-resources", version.ref = "compose" }
