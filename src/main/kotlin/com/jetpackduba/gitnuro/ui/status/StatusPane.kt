@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.isCtrlPressed
+import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.input.TextFieldValue
@@ -356,6 +357,7 @@ fun ColumnScope.ChangesList(
                             StatusPaneAction.SelectEntry(
                                 statusEntry = treeEntry.data,
                                 isCtrlPressed = keyboardModifiers.isCtrlPressed,
+                                isMetaPressed = keyboardModifiers.isMetaPressed,
                                 isShiftPressed = keyboardModifiers.isShiftPressed,
                                 diffEntries = entries,
                                 selectedEntries = selectedEntries,

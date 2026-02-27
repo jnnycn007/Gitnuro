@@ -19,6 +19,7 @@ sealed interface StatusPaneAction {
     data class SelectEntry(
         val statusEntry: StatusEntry,
         val isCtrlPressed: Boolean,
+        val isMetaPressed: Boolean,
         val isShiftPressed: Boolean,
         val diffEntries: List<TreeItem<StatusEntry>>,
         val selectedEntries: List<DiffType.UncommittedDiff>,

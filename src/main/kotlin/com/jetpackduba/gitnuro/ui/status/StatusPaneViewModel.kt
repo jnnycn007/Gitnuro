@@ -22,6 +22,8 @@ import com.jetpackduba.gitnuro.models.positiveNotification
 import com.jetpackduba.gitnuro.repositories.AppSettingsRepository
 import com.jetpackduba.gitnuro.repositories.DiffSelected
 import com.jetpackduba.gitnuro.repositories.SelectedDiffItemRepository
+import com.jetpackduba.gitnuro.system.OS
+import com.jetpackduba.gitnuro.system.currentOs
 import com.jetpackduba.gitnuro.ui.tree_files.TreeItem
 import com.jetpackduba.gitnuro.ui.tree_files.entriesToTreeEntry
 import kotlinx.coroutines.*
@@ -342,6 +344,7 @@ class StatusPaneViewModel @Inject constructor(
 
         is StatusPaneAction.SelectEntry -> selectEntries(
             action.isCtrlPressed,
+            action.isMetaPressed,
             action.isShiftPressed,
             diffEntries = action.diffEntries,
             selectedEntries = action.selectedEntries,
@@ -751,6 +754,7 @@ class StatusPaneViewModel @Inject constructor(
 
     fun selectEntries(
         isCtrlPressed: Boolean,
+        isMetaPressed: Boolean,
         isShiftPressed: Boolean,
         diffEntries: List<TreeItem<StatusEntry>>,
         selectedEntries: List<DiffType.UncommittedDiff>,
@@ -758,6 +762,7 @@ class StatusPaneViewModel @Inject constructor(
     ) {
         val selectionType = getEntriesToSelect(
             isCtrlPressed = isCtrlPressed,
+            isMetaPressed = isMetaPressed,
             isShiftPressed = isShiftPressed,
             diffEntries = diffEntries,
             selectedEntries = selectedEntries,
@@ -792,6 +797,7 @@ class StatusPaneViewModel @Inject constructor(
 
     private fun getEntriesToSelect(
         isCtrlPressed: Boolean,
+        isMetaPressed: Boolean,
         isShiftPressed: Boolean,
         diffEntries: List<TreeItem<StatusEntry>>,
         selectedEntries: List<DiffType.UncommittedDiff>,
@@ -809,7 +815,7 @@ class StatusPaneViewModel @Inject constructor(
                 SelectionType.AddMultipleEntries(entries)
             }
 
-            isCtrlPressed -> {
+            currentOs == OS.MAC && isMetaPressed || isCtrlPressed -> {
                 val isAlreadyPresent = selectedEntries.any { it.statusEntry == entry }
 
                 if (isAlreadyPresent) {
