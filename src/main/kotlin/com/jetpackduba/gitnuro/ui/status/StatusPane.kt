@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalAnimationApi::class, ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 
-package com.jetpackduba.gitnuro.ui
+package com.jetpackduba.gitnuro.ui.status
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -47,65 +46,59 @@ import com.jetpackduba.gitnuro.ui.context_menu.statusDirEntriesContextMenuItems
 import com.jetpackduba.gitnuro.ui.context_menu.statusEntriesContextMenuItems
 import com.jetpackduba.gitnuro.ui.dialogs.CommitAuthorDialog
 import com.jetpackduba.gitnuro.ui.tree_files.TreeItem
-import com.jetpackduba.gitnuro.viewmodels.CommitterDataRequestState
-import com.jetpackduba.gitnuro.viewmodels.StageStateUi
-import com.jetpackduba.gitnuro.viewmodels.StatusViewModel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.eclipse.jgit.lib.RepositoryState
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.max
-import kotlin.math.min
 
 @Composable
-fun UncommittedChanges(
-    statusViewModel: StatusViewModel,
+fun StatusPane(
+    statusPaneViewModel: StatusPaneViewModel,
     repositoryState: RepositoryState,
     onBlameFile: (String) -> Unit,
     onHistoryFile: (String) -> Unit,
 ) {
-    val stageStateUi = statusViewModel.stageStateUi.collectAsState().value
-    val swapUncommittedChanges by statusViewModel.swapUncommittedChanges.collectAsState()
-    val (commitMessage, setCommitMessage) = remember(statusViewModel) { mutableStateOf(statusViewModel.savedCommitMessage.message) }
-    val stagedListState by statusViewModel.stagedLazyListState.collectAsState()
-    val unstagedListState by statusViewModel.unstagedLazyListState.collectAsState()
-    val isAmend by statusViewModel.isAmend.collectAsState()
-    val isAmendRebaseInteractive by statusViewModel.isAmendRebaseInteractive.collectAsState()
-    val committerDataRequestState = statusViewModel.committerDataRequestState.collectAsState()
+    val stageStateUi = statusPaneViewModel.stageStateUi.collectAsState().value
+    val swapUncommittedChanges by statusPaneViewModel.swapUncommittedChanges.collectAsState()
+    val (commitMessage, setCommitMessage) = remember(statusPaneViewModel) { mutableStateOf(statusPaneViewModel.savedCommitMessage.message) }
+    val stagedListState by statusPaneViewModel.stagedLazyListState.collectAsState()
+    val unstagedListState by statusPaneViewModel.unstagedLazyListState.collectAsState()
+    val isAmend by statusPaneViewModel.isAmend.collectAsState()
+    val isAmendRebaseInteractive by statusPaneViewModel.isAmendRebaseInteractive.collectAsState()
+    val committerDataRequestState = statusPaneViewModel.committerDataRequestState.collectAsState()
     val committerDataRequestStateValue = committerDataRequestState.value
-    val rebaseInteractiveState = statusViewModel.rebaseInteractiveState.collectAsState().value
-    val selectedUnstagedDiffEntries by statusViewModel.selectedUnstagedDiffEntries.collectAsState()
-    val selectedStagedDiffEntries by statusViewModel.selectedStagedDiffEntries.collectAsState()
+    val rebaseInteractiveState = statusPaneViewModel.rebaseInteractiveState.collectAsState().value
+    val selectedUnstagedDiffEntries by statusPaneViewModel.selectedUnstagedDiffEntries.collectAsState()
+    val selectedStagedDiffEntries by statusPaneViewModel.selectedStagedDiffEntries.collectAsState()
 
-    val showSearchStaged by statusViewModel.showSearchStaged.collectAsState()
-    val showAsTree by statusViewModel.showAsTree.collectAsState()
-    val searchFilterStaged by statusViewModel.searchFilterStaged.collectAsState()
-    val showSearchUnstaged by statusViewModel.showSearchUnstaged.collectAsState()
-    val searchFilterUnstaged by statusViewModel.searchFilterUnstaged.collectAsState()
+    val showSearchStaged by statusPaneViewModel.showSearchStaged.collectAsState()
+    val showAsTree by statusPaneViewModel.showAsTree.collectAsState()
+    val searchFilterStaged by statusPaneViewModel.searchFilterStaged.collectAsState()
+    val showSearchUnstaged by statusPaneViewModel.showSearchUnstaged.collectAsState()
+    val searchFilterUnstaged by statusPaneViewModel.searchFilterUnstaged.collectAsState()
 
     val isAmenableRebaseInteractive =
         repositoryState.isRebasing && rebaseInteractiveState is RebaseInteractiveState.ProcessingCommits && rebaseInteractiveState.isCurrentStepAmenable
 
     val doCommit = {
-        statusViewModel.commit(commitMessage)
+        statusPaneViewModel.commit(commitMessage)
         Unit
-//        onStagedDiffEntrySelected(emptyList(), false)
     }
 
     val canCommit = commitMessage.isNotEmpty() && stageStateUi.hasStagedFiles
-    val canAmend = commitMessage.isNotEmpty() && statusViewModel.hasPreviousCommits
+    val canAmend = commitMessage.isNotEmpty() && statusPaneViewModel.hasPreviousCommits
     val tabFocusRequester = LocalTabFocusRequester.current
 
-    LaunchedEffect(statusViewModel) {
+    LaunchedEffect(statusPaneViewModel) {
         launch {
-            statusViewModel.commitMessageChangesFlow.collect { newCommitMessage ->
+            statusPaneViewModel.commitMessageChangesFlow.collect { newCommitMessage ->
                 setCommitMessage(newCommitMessage)
             }
         }
 
         launch {
-            statusViewModel.showSearchUnstaged.collectLatest { show ->
+            statusPaneViewModel.showSearchUnstaged.collectLatest { show ->
                 if (!show) {
                     tabFocusRequester.requestFocus()
                 }
@@ -113,7 +106,7 @@ fun UncommittedChanges(
         }
 
         launch {
-            statusViewModel.showSearchStaged.collectLatest { show ->
+            statusPaneViewModel.showSearchStaged.collectLatest { show ->
                 if (!show) {
                     tabFocusRequester.requestFocus()
                 }
@@ -124,9 +117,9 @@ fun UncommittedChanges(
     if (committerDataRequestStateValue is CommitterDataRequestState.WaitingInput) {
         CommitAuthorDialog(
             committerDataRequestStateValue.authorInfo,
-            onClose = { statusViewModel.onRejectCommitterData() },
+            onClose = { statusPaneViewModel.onRejectCommitterData() },
             onAccept = { newAuthorInfo, persist ->
-                statusViewModel.onAcceptCommitterData(newAuthorInfo, persist)
+                statusPaneViewModel.onAcceptCommitterData(newAuthorInfo, persist)
             },
         )
     }
@@ -143,7 +136,6 @@ fun UncommittedChanges(
         ) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colors.primaryVariant)
         }
-        val keyboardModifiers = LocalWindowInfo.current.keyboardModifiers
 
         Column(
             modifier = Modifier.weight(1f),
@@ -159,30 +151,11 @@ fun UncommittedChanges(
                         searchFilter = searchFilterStaged,
                         listState = stagedListState,
                         selectedEntries = selectedStagedDiffEntries,
-                        onSearchFilterToggled = { statusViewModel.onSearchFilterToggledStaged(it) },
-                        onSearchFocused = { statusViewModel.addStagedSearchToCloseableView() },
-                        onDiffEntryActionClick = { statusViewModel.unstage(it) },
-                        onDiffEntrySelected = { entry ->
-                            statusViewModel.selectEntries(
-                                keyboardModifiers = keyboardModifiers,
-                                diffEntries = stageStateUi.staged,
-                                selectedEntries = selectedStagedDiffEntries,
-                                entryType = EntryType.STAGED,
-                                entry = entry,
-                            )
-                        },
-                        onSearchFilterChanged = { statusViewModel.onSearchFilterChangedStaged(it) },
+                        onSearchFilterToggled = { statusPaneViewModel.onSearchFilterToggledStaged(it) },
+                        onSearchFocused = { statusPaneViewModel.addStagedSearchToCloseableView() },
                         onBlameFile = onBlameFile,
                         onHistoryFile = onHistoryFile,
-                        onReset = { statusViewModel.resetStaged(it) },
-                        onDelete = { statusViewModel.deleteFile(it) },
-                        onOpenFileInFolder = { statusViewModel.openFileInFolder(it) },
-                        onAllAction = {
-                            statusViewModel.unstageAll()
-                        },
-                        onAlternateShowAsTree = { statusViewModel.alternateShowAsTree() },
-                        onTreeDirectoryClicked = { statusViewModel.stagedTreeDirectoryClicked(it) },
-                        onTreeDirectoryAction = { statusViewModel.unstageByDirectory(it) },
+                        onAction = { statusPaneViewModel.onAction(it) },
                     )
                 }
 
@@ -196,28 +169,11 @@ fun UncommittedChanges(
                         searchFilter = searchFilterUnstaged,
                         listState = unstagedListState,
                         selectedEntries = selectedUnstagedDiffEntries,
-                        onSearchFilterToggled = { statusViewModel.onSearchFilterToggledUnstaged(it) },
-                        onSearchFocused = { statusViewModel.addUnstagedSearchToCloseableView() },
-                        onDiffEntryActionClick = { statusViewModel.stage(it) },
-                        onDiffEntrySelected = { entry ->
-                            statusViewModel.selectEntries(
-                                keyboardModifiers,
-                                diffEntries = stageStateUi.unstaged,
-                                selectedEntries = selectedUnstagedDiffEntries,
-                                entryType = EntryType.UNSTAGED,
-                                entry = entry,
-                            )
-                        },
-                        onSearchFilterChanged = { statusViewModel.onSearchFilterChangedUnstaged(it) },
+                        onSearchFilterToggled = { statusPaneViewModel.onSearchFilterToggledUnstaged(it) },
+                        onSearchFocused = { statusPaneViewModel.addUnstagedSearchToCloseableView() },
                         onBlameFile = onBlameFile,
                         onHistoryFile = onHistoryFile,
-                        onReset = { statusViewModel.resetUnstaged(it) },
-                        onDelete = { statusViewModel.deleteFile(it) },
-                        onOpenFileInFolder = { statusViewModel.openFileInFolder(it) },
-                        onAllAction = { statusViewModel.stageAll() },
-                        onAlternateShowAsTree = { statusViewModel.alternateShowAsTree() },
-                        onTreeDirectoryClicked = { statusViewModel.stagedTreeDirectoryClicked(it) },
-                        onTreeDirectoryAction = { statusViewModel.stageByDirectory(it) },
+                        onAction = { statusPaneViewModel.onAction(it) },
                     )
                 }
 
@@ -246,20 +202,20 @@ fun UncommittedChanges(
             stageStateUi is StageStateUi.Loaded && stageStateUi.haveConflictsBeenSolved,
             setCommitMessage = {
                 setCommitMessage(it)
-                statusViewModel.updateCommitMessage(it)
+                statusPaneViewModel.updateCommitMessage(it)
             },
             onResetRepoState = {
-                statusViewModel.resetRepoState()
-                statusViewModel.updateCommitMessage("")
+                statusPaneViewModel.resetRepoState()
+                statusPaneViewModel.updateCommitMessage("")
             },
             onAbortRebase = {
-                statusViewModel.abortRebase()
-                statusViewModel.updateCommitMessage("")
+                statusPaneViewModel.abortRebase()
+                statusPaneViewModel.updateCommitMessage("")
             },
-            onAmendChecked = { statusViewModel.amend(it) },
-            onContinueRebase = { statusViewModel.continueRebase(commitMessage) },
-            onSkipRebase = { statusViewModel.skipRebase() },
-            onAmendRebaseInteractiveChecked = { statusViewModel.amendRebaseInteractive(it) }
+            onAmendChecked = { statusPaneViewModel.amend(it) },
+            onContinueRebase = { statusPaneViewModel.continueRebase(commitMessage) },
+            onSkipRebase = { statusPaneViewModel.skipRebase() },
+            onAmendRebaseInteractiveChecked = { statusPaneViewModel.amendRebaseInteractive(it) }
         )
     }
 }
@@ -275,18 +231,9 @@ fun ColumnScope.StatusChangesList(
     selectedEntries: List<DiffType>,
     onSearchFilterToggled: (Boolean) -> Unit,
     onSearchFocused: () -> Unit,
-    onDiffEntryActionClick: (StatusEntry) -> Unit,
-    onDiffEntrySelected: (StatusEntry) -> Unit,
-    onSearchFilterChanged: (TextFieldValue) -> Unit,
     onBlameFile: (String) -> Unit,
     onHistoryFile: (String) -> Unit,
-    onReset: (StatusEntry) -> Unit,
-    onDelete: (StatusEntry) -> Unit,
-    onOpenFileInFolder: (String?) -> Unit,
-    onAllAction: () -> Unit,
-    onAlternateShowAsTree: () -> Unit,
-    onTreeDirectoryClicked: (String) -> Unit,
-    onTreeDirectoryAction: (String) -> Unit,
+    onAction: (StatusPaneAction) -> Unit,
 ) {
     val actionTitle = when (entryType) {
         EntryType.STAGED -> stringResource(Res.string.uncommited_changes_staged_title)
@@ -319,18 +266,9 @@ fun ColumnScope.StatusChangesList(
         selectedEntries = selectedEntries,
         onSearchFilterToggled = onSearchFilterToggled,
         onSearchFocused = onSearchFocused,
-        onDiffEntryActionClick = onDiffEntryActionClick,
-        onDiffEntrySelected = onDiffEntrySelected,
-        onSearchFilterChanged = onSearchFilterChanged,
         onBlameFile = onBlameFile,
         onHistoryFile = onHistoryFile,
-        onReset = onReset,
-        onDelete = onDelete,
-        onOpenFileInFolder = onOpenFileInFolder,
-        onAllAction = onAllAction,
-        onAlternateShowAsTree = onAlternateShowAsTree,
-        onTreeDirectoryClicked = onTreeDirectoryClicked,
-        onTreeDirectoryAction = onTreeDirectoryAction,
+        onAction = onAction,
     )
 }
 
@@ -348,18 +286,9 @@ fun ColumnScope.ChangesList(
     entries: List<TreeItem<StatusEntry>>,
     onSearchFilterToggled: (Boolean) -> Unit,
     onSearchFocused: () -> Unit,
-    onDiffEntryActionClick: (StatusEntry) -> Unit,
-    onDiffEntrySelected: (StatusEntry) -> Unit,
-    onSearchFilterChanged: (TextFieldValue) -> Unit,
     onBlameFile: (String) -> Unit,
     onHistoryFile: (String) -> Unit,
-    onReset: (StatusEntry) -> Unit,
-    onDelete: (StatusEntry) -> Unit,
-    onOpenFileInFolder: (String?) -> Unit,
-    onAllAction: () -> Unit,
-    onAlternateShowAsTree: () -> Unit,
-    onTreeDirectoryClicked: (String) -> Unit,
-    onTreeDirectoryAction: (String) -> Unit,
+    onAction: (StatusPaneAction) -> Unit,
 ) {
     val selectedEntries = remember(selectedEntries, entries) {
         val selectedEntriesForEntryType = selectedEntries
@@ -371,7 +300,7 @@ fun ColumnScope.ChangesList(
             }
             .toList()
 
-        if (selectedEntriesForEntryType.isEmpty()) return@remember emptyList<DiffType>()
+        if (selectedEntriesForEntryType.isEmpty()) return@remember emptyList()
 
         val entries = entries
             .mapNotNull { (it as? TreeItem.File<StatusEntry>)?.data }
@@ -385,13 +314,14 @@ fun ColumnScope.ChangesList(
             entryType = entryType,
             onBlame = { onBlameFile(statusEntry.filePath) },
             onHistory = { onHistoryFile(statusEntry.filePath) },
-            onReset = { onReset(statusEntry) },
-            onDelete = { onDelete(statusEntry) },
-            onOpenFileInFolder = { onOpenFileInFolder(statusEntry.parentDirectoryPath) },
+            onReset = { onAction(StatusPaneAction.Reset(statusEntry)) },
+            onDelete = { onAction(StatusPaneAction.Delete(statusEntry)) },
+            onOpenFileInFolder = { onAction(StatusPaneAction.OpenInFolder(statusEntry.parentDirectoryPath)) },
         )
     }
 
     val showActionForSelected = remember(selectedEntries) { selectedEntries.count() > 1 }
+    val keyboardModifiers = LocalWindowInfo.current.keyboardModifiers
 
     ChangesList(
         title = title,
@@ -402,18 +332,16 @@ fun ColumnScope.ChangesList(
         searchFilter = searchFilterUnstaged,
         onSearchFilterToggled = onSearchFilterToggled,
         onSearchFocused = onSearchFocused,
-        onSearchFilterChanged = onSearchFilterChanged,
+        onSearchFilterChanged = { onAction(StatusPaneAction.SearchFilterChanged(it, entryType)) },
         listState = listState,
-        onAllAction = onAllAction,
-        onAlternateShowAsTree = onAlternateShowAsTree,
+        onAllAction = { onAction(StatusPaneAction.AllEntriesAction(entryType)) },
+        onAlternateShowAsTree = { onAction(StatusPaneAction.ToggleShowAsTree) },
     ) {
         items(entries, key = { it.fullPath }) { treeEntry ->
             val isEntrySelected = treeEntry is TreeItem.File<StatusEntry> &&
                     selectedEntries.any { entry ->
-                        entry is DiffType.UncommittedDiff && // Added for smartcast
-                                entry.statusEntry == treeEntry.data &&
-                                ((entry.isUnstagedDiff && entryType == EntryType.UNSTAGED) ||
-                                        (entry.isStagedDiff && entryType == EntryType.STAGED))
+                        entry.statusEntry == treeEntry.data && ((entry.isUnstagedDiff && entryType == EntryType.UNSTAGED) ||
+                                (entry.isStagedDiff && entryType == EntryType.STAGED))
                     }
 
             UncommittedTreeItemEntry(
@@ -424,21 +352,33 @@ fun ColumnScope.ChangesList(
                 showAsTree = showAsTree,
                 onClick = {
                     if (treeEntry is TreeItem.File<StatusEntry>) {
-                        onDiffEntrySelected(treeEntry.data)
+                        onAction(
+                            StatusPaneAction.SelectEntry(
+                                statusEntry = treeEntry.data,
+                                isCtrlPressed = keyboardModifiers.isCtrlPressed,
+                                isShiftPressed = keyboardModifiers.isShiftPressed,
+                                diffEntries = entries,
+                                selectedEntries = selectedEntries,
+                            )
+                        )
                     } else if (treeEntry is TreeItem.Dir) {
-                        onTreeDirectoryClicked(treeEntry.fullPath)
+                        onAction(
+                            StatusPaneAction.TreeDirectoryToggle(
+                                treeEntry.fullPath
+                            )
+                        )
                     }
                 },
                 onButtonClick = {
                     if (treeEntry is TreeItem.File<StatusEntry>) {
-                        onDiffEntryActionClick(treeEntry.data)
+                        onAction(StatusPaneAction.EntryAction(treeEntry.data))
                     }
                 },
                 onGenerateContextMenu = entriesContextMenu(),
                 onGenerateDirectoryContextMenu = { dir ->
                     statusDirEntriesContextMenuItems(
                         entryType = entryType,
-                        onStageChanges = { onTreeDirectoryAction(dir.fullPath) },
+                        onStageChanges = { onAction(StatusPaneAction.DirectoryAction(dir.fullPath, entryType)) },
                         onDiscardDirectoryChanges = {},
                     )
                 },

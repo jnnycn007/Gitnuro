@@ -1,9 +1,6 @@
-package com.jetpackduba.gitnuro.viewmodels
+package com.jetpackduba.gitnuro.ui.status
 
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
-import androidx.compose.ui.input.pointer.isCtrlPressed
-import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.text.input.TextFieldValue
 import com.jetpackduba.gitnuro.SharedRepositoryStateManager
 import com.jetpackduba.gitnuro.TaskType
@@ -38,7 +35,7 @@ import kotlin.math.min
 
 private const val MIN_TIME_IN_MS_TO_SHOW_LOAD = 500L
 
-class StatusViewModel @Inject constructor(
+class StatusPaneViewModel @Inject constructor(
     private val tabState: TabState,
     private val stageEntryUseCase: StageEntryUseCase,
     private val unstageEntryUseCase: UnstageEntryUseCase,
@@ -309,14 +306,56 @@ class StatusViewModel @Inject constructor(
         }.toList()
     }
 
-    fun stage(statusEntry: StatusEntry) = tabState.runOperation(
+    fun onAction(action: StatusPaneAction) = when (action) {
+        is StatusPaneAction.EntryAction -> {
+            when (action.statusEntry.entryType) {
+                EntryType.STAGED -> unstage(action.statusEntry)
+                EntryType.UNSTAGED -> stage(action.statusEntry)
+            }
+        }
+
+        is StatusPaneAction.Reset -> when (action.statusEntry.entryType) {
+            EntryType.STAGED -> resetStaged(action.statusEntry)
+            EntryType.UNSTAGED -> resetUnstaged(action.statusEntry)
+        }
+
+        is StatusPaneAction.AllEntriesAction -> when (action.entryType) {
+            EntryType.STAGED -> unstageAll()
+            EntryType.UNSTAGED -> stageAll()
+        }
+
+        is StatusPaneAction.Delete -> deleteFile(action.statusEntry)
+        is StatusPaneAction.DirectoryAction -> when (action.entryType) {
+            EntryType.STAGED -> unstageByDirectory(action.path)
+            EntryType.UNSTAGED -> stageByDirectory(action.path)
+        }
+
+        is StatusPaneAction.OpenInFolder -> openFileInFolder(action.path)
+        is StatusPaneAction.SearchFilterChanged -> when (action.entryType) {
+            EntryType.STAGED -> onSearchFilterChangedStaged(action.filter)
+            EntryType.UNSTAGED -> onSearchFilterChangedUnstaged(action.filter)
+        }
+
+        is StatusPaneAction.SelectEntry -> selectEntries(
+            action.isCtrlPressed,
+            action.isShiftPressed,
+            diffEntries = action.diffEntries,
+            selectedEntries = action.selectedEntries,
+            entry = action.statusEntry
+        )
+
+        StatusPaneAction.ToggleShowAsTree -> alternateShowAsTree()
+        is StatusPaneAction.TreeDirectoryToggle -> toggleTreeDirectoryVisibility(action.path)
+    }
+
+    private fun stage(statusEntry: StatusEntry) = tabState.runOperation(
         refreshType = RefreshType.UNCOMMITTED_CHANGES,
         showError = true,
     ) { git ->
         stageEntryUseCase(git, statusEntry)
     }
 
-    fun unstage(statusEntry: StatusEntry) = tabState.runOperation(
+    private fun unstage(statusEntry: StatusEntry) = tabState.runOperation(
         refreshType = RefreshType.UNCOMMITTED_CHANGES,
         showError = true,
     ) { git ->
@@ -324,7 +363,7 @@ class StatusViewModel @Inject constructor(
     }
 
 
-    fun unstageAll() = tabState.safeProcessing(
+    private fun unstageAll() = tabState.safeProcessing(
         refreshType = RefreshType.UNCOMMITTED_CHANGES,
         taskType = TaskType.UNSTAGE_ALL_FILES,
     ) { git ->
@@ -339,7 +378,7 @@ class StatusViewModel @Inject constructor(
         null
     }
 
-    fun stageAll() = tabState.safeProcessing(
+    private fun stageAll() = tabState.safeProcessing(
         refreshType = RefreshType.UNCOMMITTED_CHANGES,
         taskType = TaskType.STAGE_ALL_FILES,
     ) { git ->
@@ -354,13 +393,13 @@ class StatusViewModel @Inject constructor(
         null
     }
 
-    fun resetStaged(statusEntry: StatusEntry) = tabState.runOperation(
+    private fun resetStaged(statusEntry: StatusEntry) = tabState.runOperation(
         refreshType = RefreshType.UNCOMMITTED_CHANGES_AND_LOG,
     ) { git ->
         resetEntryUseCase(git, statusEntry, staged = true)
     }
 
-    fun resetUnstaged(statusEntry: StatusEntry) = tabState.runOperation(
+    private fun resetUnstaged(statusEntry: StatusEntry) = tabState.runOperation(
         refreshType = RefreshType.UNCOMMITTED_CHANGES_AND_LOG,
     ) { git ->
         resetEntryUseCase(git, statusEntry, staged = false)
@@ -582,7 +621,7 @@ class StatusViewModel @Inject constructor(
         positiveNotification("Repository state has been reset")
     }
 
-    fun deleteFile(statusEntry: StatusEntry) = tabState.runOperation(
+    private fun deleteFile(statusEntry: StatusEntry) = tabState.runOperation(
         refreshType = RefreshType.UNCOMMITTED_CHANGES,
     ) { git ->
         val path = statusEntry.filePath
@@ -638,23 +677,23 @@ class StatusViewModel @Inject constructor(
         this._committerDataRequestState.value = CommitterDataRequestState.Accepted(newAuthorInfo, persist)
     }
 
-    fun onSearchFilterToggledStaged(visible: Boolean) {
-        _showSearchStaged.value = visible
+    fun onSearchFilterToggledStaged(visible: Boolean? = null) {
+        _showSearchStaged.value = visible ?: !_showSearchStaged.value
     }
 
     fun onSearchFilterChangedStaged(filter: TextFieldValue) {
         _searchFilterStaged.value = filter
     }
 
-    fun onSearchFilterToggledUnstaged(visible: Boolean) {
-        _showSearchUnstaged.value = visible
+    fun onSearchFilterToggledUnstaged(visible: Boolean? = null) {
+        _showSearchUnstaged.value = visible ?: !_showSearchUnstaged.value
     }
 
     fun onSearchFilterChangedUnstaged(filter: TextFieldValue) {
         _searchFilterUnstaged.value = filter
     }
 
-    fun stagedTreeDirectoryClicked(directoryPath: String) {
+    fun toggleTreeDirectoryVisibility(directoryPath: String) {
         val contractedDirectories = treeContractedDirectories.value
 
         if (contractedDirectories.contains(directoryPath)) {
@@ -707,14 +746,15 @@ class StatusViewModel @Inject constructor(
     }
 
     fun selectEntries(
-        keyboardModifiers: PointerKeyboardModifiers,
+        isCtrlPressed: Boolean,
+        isShiftPressed: Boolean,
         diffEntries: List<TreeItem<StatusEntry>>,
         selectedEntries: List<DiffType.UncommittedDiff>,
-        entryType: EntryType,
         entry: StatusEntry,
     ) {
         val selectionType = getEntriesToSelect(
-            keyboardModifiers = keyboardModifiers,
+            isCtrlPressed = isCtrlPressed,
+            isShiftPressed = isShiftPressed,
             diffEntries = diffEntries,
             selectedEntries = selectedEntries,
             entry = entry,
@@ -722,24 +762,24 @@ class StatusViewModel @Inject constructor(
 
         when (selectionType) {
             is SelectionType.AddMultipleEntries -> this.selectEntries(
-                entryType,
+                entry.entryType,
                 selectionType.entries,
                 addToExisting = true
             )
 
             is SelectionType.AppendSingleEntry -> this.selectEntries(
-                entryType,
+                entry.entryType,
                 listOf(selectionType.entry),
                 addToExisting = true,
             )
 
             is SelectionType.RemoveSingleEntry -> this.removeEntriesFromSelection(
-                setOf(DiffType.UncommittedDiff(selectionType.entry, entryType, true)),
-                entryType,
+                setOf(DiffType.UncommittedDiff(selectionType.entry, entry.entryType, true)),
+                entry.entryType,
             )
 
             is SelectionType.SetSingleEntry -> this.selectEntries(
-                entryType,
+                entry.entryType,
                 listOf(selectionType.entry),
                 addToExisting = false,
             )
@@ -747,13 +787,14 @@ class StatusViewModel @Inject constructor(
     }
 
     private fun getEntriesToSelect(
-        keyboardModifiers: PointerKeyboardModifiers,
+        isCtrlPressed: Boolean,
+        isShiftPressed: Boolean,
         diffEntries: List<TreeItem<StatusEntry>>,
         selectedEntries: List<DiffType.UncommittedDiff>,
         entry: StatusEntry,
     ): SelectionType<StatusEntry> {
         return when {
-            keyboardModifiers.isShiftPressed -> {
+            isShiftPressed -> {
                 val entries =
                     getEntriesInBetween(
                         diffEntries,
@@ -764,7 +805,7 @@ class StatusViewModel @Inject constructor(
                 SelectionType.AddMultipleEntries(entries)
             }
 
-            keyboardModifiers.isCtrlPressed -> {
+            isCtrlPressed -> {
                 val isAlreadyPresent = selectedEntries.any { it.statusEntry == entry }
 
                 if (isAlreadyPresent) {

@@ -1,6 +1,7 @@
 package com.jetpackduba.gitnuro.viewmodels
 
 import com.jetpackduba.gitnuro.di.TabScope
+import com.jetpackduba.gitnuro.ui.status.StatusPaneViewModel
 import com.jetpackduba.gitnuro.viewmodels.sidepanel.SidePanelViewModel
 import com.jetpackduba.gitnuro.viewmodels.sidepanel.SubmoduleDialogViewModel
 import javax.inject.Inject
@@ -8,7 +9,7 @@ import javax.inject.Provider
 
 interface IViewModelsProvider {
     val logViewModel: LogViewModel
-    val statusViewModel: StatusViewModel
+    val statusPaneViewModel: StatusPaneViewModel
     val menuViewModel: MenuViewModel
     val commitChangesViewModel: CommitChangesViewModel
     val cloneViewModel: CloneViewModel
@@ -27,7 +28,7 @@ interface IViewModelsProvider {
 @TabScope
 class ViewModelsProvider @Inject constructor(
     override val logViewModel: LogViewModel,
-    override val statusViewModel: StatusViewModel,
+    override val statusPaneViewModel: StatusPaneViewModel,
     override val menuViewModel: MenuViewModel,
     override val commitChangesViewModel: CommitChangesViewModel,
     override val cloneViewModel: CloneViewModel,

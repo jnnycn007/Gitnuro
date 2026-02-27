@@ -14,14 +14,11 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.jetpackduba.gitnuro.LocalTabFocusRequester
-import com.jetpackduba.gitnuro.extensions.countOrZero
 import com.jetpackduba.gitnuro.extensions.handMouseClickable
 import com.jetpackduba.gitnuro.generated.resources.Res
 import com.jetpackduba.gitnuro.generated.resources.bottom_info_bar_email_not_set
 import com.jetpackduba.gitnuro.generated.resources.bottom_info_bar_name_and_email
 import com.jetpackduba.gitnuro.generated.resources.bottom_info_bar_name_not_set
-import com.jetpackduba.gitnuro.git.DiffType
-import com.jetpackduba.gitnuro.git.EntryType
 import com.jetpackduba.gitnuro.git.rebase.RebaseInteractiveState
 import com.jetpackduba.gitnuro.git.remote_operations.PullType
 import com.jetpackduba.gitnuro.keybindings.KeybindingOption
@@ -32,6 +29,7 @@ import com.jetpackduba.gitnuro.ui.components.TripleVerticalSplitPanel
 import com.jetpackduba.gitnuro.ui.dialogs.*
 import com.jetpackduba.gitnuro.ui.diff.Diff
 import com.jetpackduba.gitnuro.ui.log.Log
+import com.jetpackduba.gitnuro.ui.status.StatusPane
 import com.jetpackduba.gitnuro.updates.Update
 import com.jetpackduba.gitnuro.viewmodels.BlameState
 import com.jetpackduba.gitnuro.viewmodels.RepositoryOpenViewModel
@@ -380,8 +378,8 @@ fun MainContentView(
             ) {
                 when (selectedItem) {
                     SelectedItem.UncommittedChanges -> {
-                        UncommittedChanges(
-                            statusViewModel = repositoryOpenViewModel.tabViewModelsProvider.statusViewModel,
+                        StatusPane(
+                            statusPaneViewModel = repositoryOpenViewModel.tabViewModelsProvider.statusPaneViewModel,
                             repositoryState = repositoryState,
                             onBlameFile = { repositoryOpenViewModel.blameFile(it) },
                             onHistoryFile = { repositoryOpenViewModel.fileHistory(it) }
