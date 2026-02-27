@@ -31,6 +31,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.eclipse.jgit.api.Git
@@ -114,6 +115,14 @@ class RepositoryOpenViewModel @Inject constructor(
 
             launch {
                 watchRepositoryChanges(tabState.git)
+            }
+
+            launch {
+                selectedDiffItemRepository.diffSelected.collectLatest {
+                    if (it != null && it.entries.count() == 1) {
+                        minimizeBlame()
+                    }
+                }
             }
         }
     }

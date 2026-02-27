@@ -265,7 +265,6 @@ class StatusPaneViewModel @Inject constructor(
                             .toSet()
 
                         if (diffSelectedToRemove.isNotEmpty()) {
-                            printLog("ABDE", "Removing entries $diffSelectedToRemove")
                             removeEntriesFromSelection(diffSelectedToRemove, diffSelected.entryType)
                         }
                     }
