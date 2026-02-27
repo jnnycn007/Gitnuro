@@ -109,7 +109,7 @@ class HistoryViewModel @Inject constructor(
             }
 
             if (diffEntry == null) {
-                _viewDiffResult.value = ViewDiffResult.DiffNotFound
+                _viewDiffResult.value = ViewDiffResult.DiffNotFound(null)
                 return@runOperation
             }
 
@@ -131,7 +131,7 @@ class HistoryViewModel @Inject constructor(
         } catch (ex: Exception) {
             if (ex is MissingDiffEntryException) {
                 tabState.refreshData(refreshType = RefreshType.UNCOMMITTED_CHANGES)
-                _viewDiffResult.value = ViewDiffResult.DiffNotFound
+                _viewDiffResult.value = ViewDiffResult.DiffNotFound(null)
             } else
                 ex.printStackTrace()
         }

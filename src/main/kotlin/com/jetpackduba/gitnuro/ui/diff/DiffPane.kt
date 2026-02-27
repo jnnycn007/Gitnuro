@@ -110,7 +110,7 @@ fun DiffPane(
             }
     ) {
         when (viewDiffResult) {
-            ViewDiffResult.DiffNotFound -> {
+            is ViewDiffResult.DiffNotFound -> {
                 closeDiffView()
             }
 
@@ -208,7 +208,7 @@ fun DiffPane(
 
             is ViewDiffResult.Loading -> {
                 Column {
-                    PathOnlyDiffHeader(filePath = viewDiffResult.filePath, onCloseDiffView = { closeDiffView() })
+                    PathOnlyDiffHeader(filePath = viewDiffResult.diffType.filePath, onCloseDiffView = { closeDiffView() })
                     LinearProgressIndicator(
                         modifier = Modifier.fillMaxWidth(),
                         color = MaterialTheme.colors.primaryVariant

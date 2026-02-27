@@ -17,11 +17,7 @@ import com.jetpackduba.gitnuro.ui.TabsManager
 import com.jetpackduba.gitnuro.viewmodels.ViewDiffResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.eclipse.jgit.diff.DiffEntry
 import org.eclipse.jgit.lib.RepositoryState
@@ -48,7 +44,7 @@ class DiffViewModel @Inject constructor(
     private val selectedDiffTypeRepository: SelectedDiffItemRepository,
     private val sharedRepositoryStateManager: SharedRepositoryStateManager,
 ) {
-    private val _diffResult = MutableStateFlow<ViewDiffResult>(ViewDiffResult.Loading(""))
+    private val _diffResult = MutableStateFlow<ViewDiffResult>(ViewDiffResult.None)
     val diffResult: StateFlow<ViewDiffResult?> = _diffResult
 
     val closeViewFlow = tabState.closeViewFlow
@@ -142,12 +138,12 @@ class DiffViewModel @Inject constructor(
                 )
             }
 
-            val isFirstLoad = oldDiffResult is ViewDiffResult.Loading && oldDiffResult.filePath.isEmpty()
+            val isFirstLoad = oldDiffResult is ViewDiffResult.Loading && oldDiffResult.diffType.filePath.isEmpty()
 
             try {
                 delayedStateChange(
                     delayMs = if (isFirstLoad) 0 else DIFF_MIN_TIME_IN_MS_TO_SHOW_LOAD,
-                    onDelayTriggered = { _diffResult.value = ViewDiffResult.Loading(diffType.filePath) }
+                    onDelayTriggered = { _diffResult.value = ViewDiffResult.Loading(diffType) }
                 ) {
                     val diffFormat = formatDiffUseCase(git, diffType, isDisplayFullFile.value)
                     val diffEntry = diffFormat.diffEntry
@@ -169,7 +165,7 @@ class DiffViewModel @Inject constructor(
             } catch (ex: Exception) {
                 if (ex is MissingDiffEntryException) {
                     tabState.refreshData(refreshType = RefreshType.UNCOMMITTED_CHANGES)
-                    _diffResult.value = ViewDiffResult.DiffNotFound
+                    _diffResult.value = ViewDiffResult.DiffNotFound(diffType)
                 } else
                     ex.printStackTrace()
             }
@@ -265,7 +261,22 @@ class DiffViewModel @Inject constructor(
     }
 
     fun clearDiff() {
-        selectedDiffTypeRepository.clearDiff()
+        val diff = when (val state = _diffResult.value) {
+            is ViewDiffResult.DiffNotFound -> state.diff
+            is ViewDiffResult.Loaded -> state.diffType
+            is ViewDiffResult.Loading -> state.diffType
+            ViewDiffResult.None -> null
+        }
+
+        if (diff != null) {
+            when (diff) {
+                is DiffType.CommitDiff -> selectedDiffTypeRepository.removeSelectedCommited(setOf(diff))
+                is DiffType.UncommittedDiff -> selectedDiffTypeRepository.removeSelectedUncommited(
+                    setOf(diff),
+                    diff.entryType,
+                )
+            }
+        }
     }
 }
 

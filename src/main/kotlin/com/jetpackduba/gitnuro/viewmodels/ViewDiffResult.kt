@@ -6,9 +6,9 @@ import com.jetpackduba.gitnuro.git.diff.DiffResult
 sealed interface ViewDiffResult {
     object None : ViewDiffResult
 
-    data class Loading(val filePath: String) : ViewDiffResult
+    data class Loading(val diffType: DiffType) : ViewDiffResult
 
-    object DiffNotFound : ViewDiffResult
+    data class DiffNotFound(val diff: DiffType?) : ViewDiffResult
 
     data class Loaded(val diffType: DiffType, val diffResult: DiffResult) : ViewDiffResult
 }

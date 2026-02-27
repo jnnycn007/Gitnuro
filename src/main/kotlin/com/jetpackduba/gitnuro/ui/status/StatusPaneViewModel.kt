@@ -16,6 +16,7 @@ import com.jetpackduba.gitnuro.git.rebase.RebaseInteractiveState
 import com.jetpackduba.gitnuro.git.rebase.SkipRebaseUseCase
 import com.jetpackduba.gitnuro.git.repository.ResetRepositoryStateUseCase
 import com.jetpackduba.gitnuro.git.workspace.*
+import com.jetpackduba.gitnuro.logging.printLog
 import com.jetpackduba.gitnuro.models.AuthorInfo
 import com.jetpackduba.gitnuro.models.positiveNotification
 import com.jetpackduba.gitnuro.repositories.AppSettingsRepository
@@ -257,12 +258,16 @@ class StatusPaneViewModel @Inject constructor(
                             .asSequence()
                             .filter { diff ->
                                 entries.none { statusEntry ->
-                                    statusEntry.filePath == diff.statusEntry.filePath
+                                    statusEntry.filePath == diff.statusEntry.filePath &&
+                                            statusEntry.entryType == diff.statusEntry.entryType
                                 }
                             }
                             .toSet()
 
-                        removeEntriesFromSelection(diffSelectedToRemove, diffSelected.entryType)
+                        if (diffSelectedToRemove.isNotEmpty()) {
+                            printLog("ABDE", "Removing entries $diffSelectedToRemove")
+                            removeEntriesFromSelection(diffSelectedToRemove, diffSelected.entryType)
+                        }
                     }
                 }
         }

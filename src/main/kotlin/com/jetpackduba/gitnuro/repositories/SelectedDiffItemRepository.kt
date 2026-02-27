@@ -57,10 +57,6 @@ class SelectedDiffItemRepository @Inject constructor() {
         _diffSelected.value = newDiffSelected
     }
 
-    fun clearDiff() {
-        _diffSelected.value = null
-    }
-
     fun removeSelectedUncommited(selectedToRemove: Set<DiffType.UncommittedDiff>, entryType: EntryType) {
         val diffSelected = this.diffSelected.value
 
@@ -69,7 +65,7 @@ class SelectedDiffItemRepository @Inject constructor() {
         }
     }
 
-    fun removeSelectedCommited(selectedToRemove: Set<DiffType.CommitDiff>, entryType: EntryType) {
+    fun removeSelectedCommited(selectedToRemove: Set<DiffType.CommitDiff>) {
         val diffSelected = this.diffSelected.value
 
         if (diffSelected is DiffSelected.CommitedChanges) {
