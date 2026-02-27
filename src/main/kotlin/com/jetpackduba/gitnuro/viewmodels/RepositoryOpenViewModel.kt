@@ -24,6 +24,7 @@ import com.jetpackduba.gitnuro.ui.IVerticalSplitPaneConfig
 import com.jetpackduba.gitnuro.ui.SelectedItem
 import com.jetpackduba.gitnuro.ui.TabsManager
 import com.jetpackduba.gitnuro.ui.VerticalSplitPaneConfig
+import com.jetpackduba.gitnuro.ui.diff.DiffViewModel
 import com.jetpackduba.gitnuro.updates.Update
 import com.jetpackduba.gitnuro.updates.UpdatesRepository
 import kotlinx.coroutines.CoroutineScope

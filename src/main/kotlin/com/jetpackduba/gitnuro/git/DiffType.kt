@@ -21,10 +21,7 @@ sealed class DiffType {
             get() = diffEntry.toStatusType()
     }
 
-    /**
-     * @param safe Is repository with state [org.eclipse.jgit.lib.RepositoryState.SAFE] when loading that status entry
-     */
-    data class UncommittedDiff(val statusEntry: StatusEntry, val entryType: EntryType, val safe: Boolean) : DiffType() {
+    data class UncommittedDiff(val statusEntry: StatusEntry, val entryType: EntryType) : DiffType() {
         override val filePath: String
             get() = statusEntry.filePath
 

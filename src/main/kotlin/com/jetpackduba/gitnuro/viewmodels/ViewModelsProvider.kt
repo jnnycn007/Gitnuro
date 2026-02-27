@@ -1,6 +1,7 @@
 package com.jetpackduba.gitnuro.viewmodels
 
 import com.jetpackduba.gitnuro.di.TabScope
+import com.jetpackduba.gitnuro.ui.diff.DiffViewModel
 import com.jetpackduba.gitnuro.ui.status.StatusPaneViewModel
 import com.jetpackduba.gitnuro.viewmodels.sidepanel.SidePanelViewModel
 import com.jetpackduba.gitnuro.viewmodels.sidepanel.SubmoduleDialogViewModel

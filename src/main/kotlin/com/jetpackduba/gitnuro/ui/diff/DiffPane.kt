@@ -49,8 +49,6 @@ import com.jetpackduba.gitnuro.ui.context_menu.ContextMenuElement
 import com.jetpackduba.gitnuro.ui.context_menu.SelectionAwareTextContextMenu
 import com.jetpackduba.gitnuro.ui.diff.syntax_highlighter.SyntaxHighlighter
 import com.jetpackduba.gitnuro.ui.diff.syntax_highlighter.getSyntaxHighlighterFromExtension
-import com.jetpackduba.gitnuro.viewmodels.DiffViewModel
-import com.jetpackduba.gitnuro.viewmodels.TextDiffType
 import com.jetpackduba.gitnuro.viewmodels.ViewDiffResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -77,7 +75,7 @@ private fun <T> loadOrNull(key: Any, action: suspend () -> T?): T? {
 }
 
 @Composable
-fun Diff(
+fun DiffPane(
     diffViewModel: DiffViewModel,
     onCloseDiffView: () -> Unit,
 ) {
@@ -85,6 +83,7 @@ fun Diff(
     val textDiffType by diffViewModel.diffTypeFlow.collectAsState()
     val isDisplayFullFile by diffViewModel.isDisplayFullFile.collectAsState()
     val viewDiffResult = diffResultState.value ?: return
+    val isRepositoryInSafeState by diffViewModel.isRepositoryInSafeState.collectAsState(false)
     val focusRequester = remember { FocusRequester() }
 
     fun closeDiffView() {
@@ -140,6 +139,7 @@ fun Diff(
                         diffType = diffType,
                         scrollState = scrollState,
                         diffResult = diffResult,
+                        canUseHunkActions = isRepositoryInSafeState,
                         onUnstageHunk = { entry, hunk ->
                             diffViewModel.unstageHunk(entry, hunk)
                         },
@@ -167,6 +167,7 @@ fun Diff(
                         diffType = diffType,
                         scrollState = scrollState,
                         diffResult = diffResult,
+                        canUseHunkActions = isRepositoryInSafeState,
                         onUnstageHunk = { entry, hunk ->
                             diffViewModel.unstageHunk(entry, hunk)
                         },
@@ -444,6 +445,7 @@ fun HunkUnifiedTextDiff(
     diffType: DiffType,
     scrollState: LazyListState,
     diffResult: DiffResult.Text,
+    canUseHunkActions: Boolean,
     onUnstageHunk: (DiffEntry, Hunk) -> Unit,
     onStageHunk: (DiffEntry, Hunk) -> Unit,
     onUnStageLine: (DiffEntry, Hunk, Line) -> Unit,
@@ -470,6 +472,7 @@ fun HunkUnifiedTextDiff(
                             HunkHeader(
                                 header = hunk.header,
                                 diffType = diffType,
+                                canUseHunkActions = canUseHunkActions,
                                 onUnstageHunk = { onUnstageHunk(diffResult.diffEntry, hunk) },
                                 onStageHunk = { onStageHunk(diffResult.diffEntry, hunk) },
                                 onResetHunk = { onResetHunk(diffResult.diffEntry, hunk) },
@@ -515,6 +518,7 @@ fun HunkSplitTextDiff(
     diffType: DiffType,
     scrollState: LazyListState,
     diffResult: DiffResult.TextSplit,
+    canUseHunkActions: Boolean,
     onUnstageHunk: (DiffEntry, Hunk) -> Unit,
     onStageHunk: (DiffEntry, Hunk) -> Unit,
     onResetHunk: (DiffEntry, Hunk) -> Unit,
@@ -547,6 +551,7 @@ fun HunkSplitTextDiff(
                             HunkHeader(
                                 header = splitHunk.sourceHunk.header,
                                 diffType = diffType,
+                                canUseHunkActions = canUseHunkActions,
                                 onUnstageHunk = { onUnstageHunk(diffResult.diffEntry, splitHunk.sourceHunk) },
                                 onStageHunk = { onStageHunk(diffResult.diffEntry, splitHunk.sourceHunk) },
                                 onResetHunk = { onResetHunk(diffResult.diffEntry, splitHunk.sourceHunk) },
@@ -766,6 +771,7 @@ enum class SelectableSide {
 fun HunkHeader(
     header: String,
     diffType: DiffType,
+    canUseHunkActions: Boolean,
     onUnstageHunk: () -> Unit,
     onStageHunk: () -> Unit,
     onResetHunk: () -> Unit,
@@ -787,7 +793,7 @@ fun HunkHeader(
 
         // Hunks options are only visible when repository is a normal state (not during merge/rebase)
         if (
-            (diffType is DiffType.UncommittedDiff && diffType.safe) &&
+            (diffType is DiffType.UncommittedDiff && canUseHunkActions) &&
             diffType.statusType == StatusType.MODIFIED
         ) {
             val buttonText: String

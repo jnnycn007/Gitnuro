@@ -774,7 +774,7 @@ class StatusPaneViewModel @Inject constructor(
             )
 
             is SelectionType.RemoveSingleEntry -> this.removeEntriesFromSelection(
-                setOf(DiffType.UncommittedDiff(selectionType.entry, entry.entryType, true)),
+                setOf(DiffType.UncommittedDiff(selectionType.entry, entry.entryType)),
                 entry.entryType,
             )
 
@@ -849,9 +849,8 @@ class StatusPaneViewModel @Inject constructor(
         selectedDiffItemRepository.addDiffUncommited(
             entries.map {
                 DiffType.UncommittedDiff(
-                    it,
-                    entryType,
-                    safe = true
+                    statusEntry = it,
+                    entryType = entryType,
                 )
             },
             addToExisting,

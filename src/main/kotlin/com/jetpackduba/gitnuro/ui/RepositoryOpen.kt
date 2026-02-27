@@ -27,7 +27,7 @@ import com.jetpackduba.gitnuro.models.AuthorInfoSimple
 import com.jetpackduba.gitnuro.ui.components.BottomInfoBar
 import com.jetpackduba.gitnuro.ui.components.TripleVerticalSplitPanel
 import com.jetpackduba.gitnuro.ui.dialogs.*
-import com.jetpackduba.gitnuro.ui.diff.Diff
+import com.jetpackduba.gitnuro.ui.diff.DiffPane
 import com.jetpackduba.gitnuro.ui.log.Log
 import com.jetpackduba.gitnuro.ui.status.StatusPane
 import com.jetpackduba.gitnuro.updates.Update
@@ -344,7 +344,7 @@ fun MainContentView(
                                 val diffViewModel = repositoryOpenViewModel.diffViewModel
                                 val tabFocusRequester = LocalTabFocusRequester.current
 
-                                Diff(
+                                DiffPane(
                                     diffViewModel = diffViewModel,
                                     onCloseDiffView = {
                                         tabFocusRequester.requestFocus()

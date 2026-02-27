@@ -12,6 +12,7 @@ import com.jetpackduba.gitnuro.git.diff.FormatDiffUseCase
 import com.jetpackduba.gitnuro.git.diff.GenerateSplitHunkFromDiffResultUseCase
 import com.jetpackduba.gitnuro.git.diff.GetCommitDiffEntriesUseCase
 import com.jetpackduba.gitnuro.repositories.AppSettingsRepository
+import com.jetpackduba.gitnuro.ui.diff.TextDiffType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

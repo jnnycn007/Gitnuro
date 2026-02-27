@@ -11,8 +11,8 @@ import com.jetpackduba.gitnuro.theme.ColorsScheme
 import com.jetpackduba.gitnuro.theme.LinesHeightType
 import com.jetpackduba.gitnuro.theme.Theme
 import com.jetpackduba.gitnuro.ui.dialogs.settings.ProxyType
-import com.jetpackduba.gitnuro.viewmodels.TextDiffType
-import com.jetpackduba.gitnuro.viewmodels.textDiffTypeFromValue
+import com.jetpackduba.gitnuro.ui.diff.TextDiffType
+import com.jetpackduba.gitnuro.ui.diff.textDiffTypeFromValue
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

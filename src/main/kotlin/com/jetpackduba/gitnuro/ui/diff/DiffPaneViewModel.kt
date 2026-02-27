@@ -1,6 +1,7 @@
-package com.jetpackduba.gitnuro.viewmodels
+package com.jetpackduba.gitnuro.ui.diff
 
 import androidx.compose.foundation.lazy.LazyListState
+import com.jetpackduba.gitnuro.SharedRepositoryStateManager
 import com.jetpackduba.gitnuro.exceptions.MissingDiffEntryException
 import com.jetpackduba.gitnuro.extensions.delayedStateChange
 import com.jetpackduba.gitnuro.git.CloseableView
@@ -13,14 +14,17 @@ import com.jetpackduba.gitnuro.repositories.AppSettingsRepository
 import com.jetpackduba.gitnuro.repositories.SelectedDiffItemRepository
 import com.jetpackduba.gitnuro.system.OpenFileInExternalAppUseCase
 import com.jetpackduba.gitnuro.ui.TabsManager
+import com.jetpackduba.gitnuro.viewmodels.ViewDiffResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.eclipse.jgit.diff.DiffEntry
+import org.eclipse.jgit.lib.RepositoryState
 import javax.inject.Inject
 
 private const val DIFF_MIN_TIME_IN_MS_TO_SHOW_LOAD = 200L
@@ -42,6 +46,7 @@ class DiffViewModel @Inject constructor(
     private val tabsManager: TabsManager,
     private val tabScope: CoroutineScope,
     private val selectedDiffTypeRepository: SelectedDiffItemRepository,
+    private val sharedRepositoryStateManager: SharedRepositoryStateManager,
 ) {
     private val _diffResult = MutableStateFlow<ViewDiffResult>(ViewDiffResult.Loading(""))
     val diffResult: StateFlow<ViewDiffResult?> = _diffResult
@@ -50,6 +55,9 @@ class DiffViewModel @Inject constructor(
 
     val diffTypeFlow = settings.textDiffTypeFlow
     val isDisplayFullFile = settings.diffDisplayFullFileFlow
+
+    val isRepositoryInSafeState = sharedRepositoryStateManager.repositoryState
+        .map { it == RepositoryState.SAFE }
 
     private var diffType: DiffType? = null
     private var diffJob: Job? = null
