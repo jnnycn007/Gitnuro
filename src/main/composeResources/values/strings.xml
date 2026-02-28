@@ -93,6 +93,13 @@
     <string name="status_entries_context_menu_blame_file">Blame file</string>
     <string name="status_entries_context_menu_discard_file_changes">Discard file changes</string>
     <string name="status_entries_context_menu_open_file_in_folder">Open file in folder</string>
+    <string name="status_entries_context_menu_copy_file_absolute_path">Copy path</string>
+    <string name="status_entries_context_menu_copy_file_relative_path">Copy relative path</string>
+    <string name="status_entries_context_menu_discard_multiple_files">Discard %1$s files</string>
+    <string name="status_entries_context_menu_stage_multiple_files">Stage %1$s files</string>
+    <string name="status_entries_context_menu_unstage_multiple_files">Unstage %1$s files</string>
+    <string name="status_entries_context_menu_copy_files_absolute_paths">Copy paths</string>
+    <string name="status_entries_context_menu_copy_files_relative_paths">Copy relative paths</string>
 
     <!-- Branch context menu -->
     <string name="branch_context_menu_checkout_branch">Checkout branch</string>

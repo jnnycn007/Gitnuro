@@ -45,6 +45,7 @@ import com.jetpackduba.gitnuro.ui.components.*
 import com.jetpackduba.gitnuro.ui.context_menu.ContextMenuElement
 import com.jetpackduba.gitnuro.ui.context_menu.statusDirEntriesContextMenuItems
 import com.jetpackduba.gitnuro.ui.context_menu.statusEntriesContextMenuItems
+import com.jetpackduba.gitnuro.ui.context_menu.statusEntryContextMenuItems
 import com.jetpackduba.gitnuro.ui.dialogs.CommitAuthorDialog
 import com.jetpackduba.gitnuro.ui.tree_files.TreeItem
 import kotlinx.coroutines.flow.collectLatest
@@ -229,7 +230,7 @@ fun ColumnScope.StatusChangesList(
     showAsTree: Boolean,
     searchFilter: TextFieldValue,
     listState: LazyListState,
-    selectedEntries: List<DiffType>,
+    selectedEntries: List<DiffType.UncommittedDiff>,
     onSearchFilterToggled: (Boolean) -> Unit,
     onSearchFocused: () -> Unit,
     onBlameFile: (String) -> Unit,
@@ -260,9 +261,9 @@ fun ColumnScope.StatusChangesList(
         actionInfo = actionInfo,
         entryType = entryType,
         entries = entries,
-        showSearchUnstaged = showSearch,
+        showSearch = showSearch,
         showAsTree = showAsTree,
-        searchFilterUnstaged = searchFilter,
+        searchFilter = searchFilter,
         listState = listState,
         selectedEntries = selectedEntries,
         onSearchFilterToggled = onSearchFilterToggled,
@@ -279,10 +280,10 @@ fun ColumnScope.ChangesList(
     actionTitle: String,
     actionInfo: ActionInfo,
     entryType: EntryType,
-    showSearchUnstaged: Boolean,
-    searchFilterUnstaged: TextFieldValue,
+    showSearch: Boolean,
+    searchFilter: TextFieldValue,
     listState: LazyListState,
-    selectedEntries: List<DiffType>,
+    selectedEntries: List<DiffType.UncommittedDiff>,
     showAsTree: Boolean,
     entries: List<TreeItem<StatusEntry>>,
     onSearchFilterToggled: (Boolean) -> Unit,
@@ -291,26 +292,8 @@ fun ColumnScope.ChangesList(
     onHistoryFile: (String) -> Unit,
     onAction: (StatusPaneAction) -> Unit,
 ) {
-    val selectedEntries = remember(selectedEntries, entries) {
-        val selectedEntriesForEntryType = selectedEntries
-            .asSequence()
-            .filterIsInstance<DiffType.UncommittedDiff>()
-            .filter { entry ->
-                (entry.isUnstagedDiff && entryType == EntryType.UNSTAGED) ||
-                        (entry.isStagedDiff && entryType == EntryType.STAGED)
-            }
-            .toList()
-
-        if (selectedEntriesForEntryType.isEmpty()) return@remember emptyList()
-
-        val entries = entries
-            .mapNotNull { (it as? TreeItem.File<StatusEntry>)?.data }
-
-        selectedEntriesForEntryType.filter { entries.contains(it.statusEntry) }
-    }
-
     fun entriesContextMenu(): (StatusEntry) -> List<ContextMenuElement> = { statusEntry ->
-        statusEntriesContextMenuItems(
+        statusEntryContextMenuItems(
             statusEntry = statusEntry,
             entryType = entryType,
             onBlame = { onBlameFile(statusEntry.filePath) },
@@ -318,6 +301,32 @@ fun ColumnScope.ChangesList(
             onReset = { onAction(StatusPaneAction.Reset(statusEntry)) },
             onDelete = { onAction(StatusPaneAction.Delete(statusEntry)) },
             onOpenFileInFolder = { onAction(StatusPaneAction.OpenInFolder(statusEntry.parentDirectoryPath)) },
+            onCopyFilePath = { relative ->
+                onAction(
+                    StatusPaneAction.CopyPath(
+                        relative = relative,
+                        entries = listOf(statusEntry),
+                    )
+                )
+            },
+        )
+    }
+
+    fun selectedEntriesContextMenu(): (StatusEntry) -> List<ContextMenuElement> = {
+        statusEntriesContextMenuItems(
+            selectedEntriesCount = selectedEntries.count(),
+            entryType = entryType,
+            onDiscard = { onAction(StatusPaneAction.DiscardSelected(entryType)) },
+            onStageSelected = { onAction(StatusPaneAction.SelectedEntriesAction(EntryType.UNSTAGED)) },
+            onUnstageSelected = { onAction(StatusPaneAction.SelectedEntriesAction(EntryType.STAGED)) },
+            onCopyFilesPath = { relative ->
+                onAction(
+                    StatusPaneAction.CopyPath(
+                        relative = relative,
+                        entries = selectedEntries.map { it.statusEntry },
+                    )
+                )
+            },
         )
     }
 
@@ -327,10 +336,10 @@ fun ColumnScope.ChangesList(
     ChangesList(
         title = title,
         actionInfo = actionInfo,
-        showSearch = showSearchUnstaged,
+        showSearch = showSearch,
         showAsTree = showAsTree,
         showActionForSelected = showActionForSelected,
-        searchFilter = searchFilterUnstaged,
+        searchFilter = searchFilter,
         onSearchFilterToggled = onSearchFilterToggled,
         onSearchFocused = onSearchFocused,
         onSearchFilterChanged = { onAction(StatusPaneAction.SearchFilterChanged(it, entryType)) },
@@ -376,7 +385,10 @@ fun ColumnScope.ChangesList(
                         onAction(StatusPaneAction.EntryAction(treeEntry.data))
                     }
                 },
-                onGenerateContextMenu = entriesContextMenu(),
+                onGenerateContextMenu = if (isEntrySelected && selectedEntries.count() > 1)
+                    selectedEntriesContextMenu()
+                else
+                    entriesContextMenu(),
                 onGenerateDirectoryContextMenu = { dir ->
                     statusDirEntriesContextMenuItems(
                         entryType = entryType,

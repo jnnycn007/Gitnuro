@@ -24,6 +24,9 @@ sealed interface StatusPaneAction {
         val diffEntries: List<TreeItem<StatusEntry>>,
         val selectedEntries: List<DiffType.UncommittedDiff>,
     ) : StatusPaneAction
+    data class DiscardSelected(val entryType: EntryType) : StatusPaneAction
+    data class SelectedEntriesAction(val entryType: EntryType) : StatusPaneAction
+    data class CopyPath(val relative: Boolean, val entries: List<StatusEntry>) : StatusPaneAction
     data class OpenInFolder(val path: String) : StatusPaneAction
     data class TreeDirectoryToggle(val path: String) : StatusPaneAction
     data object ToggleShowAsTree : StatusPaneAction

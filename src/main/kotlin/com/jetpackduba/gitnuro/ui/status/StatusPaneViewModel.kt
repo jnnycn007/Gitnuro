@@ -16,7 +16,6 @@ import com.jetpackduba.gitnuro.git.rebase.RebaseInteractiveState
 import com.jetpackduba.gitnuro.git.rebase.SkipRebaseUseCase
 import com.jetpackduba.gitnuro.git.repository.ResetRepositoryStateUseCase
 import com.jetpackduba.gitnuro.git.workspace.*
-import com.jetpackduba.gitnuro.logging.printLog
 import com.jetpackduba.gitnuro.models.AuthorInfo
 import com.jetpackduba.gitnuro.models.positiveNotification
 import com.jetpackduba.gitnuro.repositories.AppSettingsRepository
@@ -24,6 +23,7 @@ import com.jetpackduba.gitnuro.repositories.DiffSelected
 import com.jetpackduba.gitnuro.repositories.SelectedDiffItemRepository
 import com.jetpackduba.gitnuro.system.OS
 import com.jetpackduba.gitnuro.system.currentOs
+import com.jetpackduba.gitnuro.system.systemSeparator
 import com.jetpackduba.gitnuro.ui.tree_files.TreeItem
 import com.jetpackduba.gitnuro.ui.tree_files.entriesToTreeEntry
 import kotlinx.coroutines.*
@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.*
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.PersonIdent
 import org.eclipse.jgit.lib.RepositoryState
+import org.jetbrains.skiko.ClipboardManager
 import java.io.File
 import javax.inject.Inject
 import kotlin.math.max
@@ -44,7 +45,7 @@ class StatusPaneViewModel @Inject constructor(
     private val unstageEntryUseCase: UnstageEntryUseCase,
     private val stageByDirectoryUseCase: StageByDirectoryUseCase,
     private val unstageByDirectoryUseCase: UnstageByDirectoryUseCase,
-    private val resetEntryUseCase: DiscardEntryUseCase,
+    private val discardEntriesUseCase: DiscardEntriesUseCase,
     private val stageAllUseCase: StageAllUseCase,
     private val unstageAllUseCase: UnstageAllUseCase,
     private val getLastCommitMessageUseCase: GetLastCommitMessageUseCase,
@@ -64,6 +65,7 @@ class StatusPaneViewModel @Inject constructor(
     private val appSettingsRepository: AppSettingsRepository,
     private val tabScope: CoroutineScope,
     private val selectedDiffItemRepository: SelectedDiffItemRepository,
+    private val clipboardManager: ClipboardManager,
 ) {
     private val _showSearchUnstaged = MutableStateFlow(false)
     val showSearchUnstaged: StateFlow<Boolean> = _showSearchUnstaged
@@ -321,8 +323,8 @@ class StatusPaneViewModel @Inject constructor(
         }
 
         is StatusPaneAction.Reset -> when (action.statusEntry.entryType) {
-            EntryType.STAGED -> resetStaged(action.statusEntry)
-            EntryType.UNSTAGED -> resetUnstaged(action.statusEntry)
+            EntryType.STAGED -> discardStaged(listOf(action.statusEntry))
+            EntryType.UNSTAGED -> discardUnstaged(listOf(action.statusEntry))
         }
 
         is StatusPaneAction.AllEntriesAction -> when (action.entryType) {
@@ -353,6 +355,41 @@ class StatusPaneViewModel @Inject constructor(
 
         StatusPaneAction.ToggleShowAsTree -> alternateShowAsTree()
         is StatusPaneAction.TreeDirectoryToggle -> toggleTreeDirectoryVisibility(action.path)
+        is StatusPaneAction.CopyPath -> copyEntriesPath(action.entries, action.relative)
+        is StatusPaneAction.DiscardSelected -> when (action.entryType) {
+            EntryType.STAGED -> discardSelectedStaged()
+            EntryType.UNSTAGED -> discardSelectedUnstaged()
+        }
+
+        is StatusPaneAction.SelectedEntriesAction -> when (action.entryType) {
+            EntryType.STAGED -> unstageAll()
+            EntryType.UNSTAGED -> stageAll()
+        }
+    }
+
+    private fun discardSelectedStaged() {
+        discardStaged(selectedStagedDiffEntries.value.map { it.statusEntry })
+    }
+
+    private fun discardSelectedUnstaged() {
+        discardUnstaged(selectedUnstagedDiffEntries.value.map { it.statusEntry })
+    }
+
+    private fun copyEntriesPath(
+        entries: List<StatusEntry>,
+        relative: Boolean
+    ) = tabState.runOperation(refreshType = RefreshType.NONE) { git ->
+
+        val repoAbsolutPath = git.repository.workTree.absolutePath
+        val pathsToCopy = entries.joinToString("\n") { entry ->
+            if (relative) {
+                entry.filePath
+            } else {
+                repoAbsolutPath + systemSeparator + entry.filePath
+            }
+        }
+
+        clipboardManager.setText(pathsToCopy)
     }
 
     private fun stage(statusEntry: StatusEntry) = tabState.runOperation(
@@ -400,16 +437,16 @@ class StatusPaneViewModel @Inject constructor(
         null
     }
 
-    private fun resetStaged(statusEntry: StatusEntry) = tabState.runOperation(
+    private fun discardStaged(statusEntries: List<StatusEntry>) = tabState.runOperation(
         refreshType = RefreshType.UNCOMMITTED_CHANGES_AND_LOG,
     ) { git ->
-        resetEntryUseCase(git, statusEntry, staged = true)
+        discardEntriesUseCase(git, statusEntries, staged = true)
     }
 
-    private fun resetUnstaged(statusEntry: StatusEntry) = tabState.runOperation(
+    private fun discardUnstaged(statusEntries: List<StatusEntry>) = tabState.runOperation(
         refreshType = RefreshType.UNCOMMITTED_CHANGES_AND_LOG,
     ) { git ->
-        resetEntryUseCase(git, statusEntry, staged = false)
+        discardEntriesUseCase(git, statusEntries, staged = false)
     }
 
     private suspend fun loadStatus(git: Git) {
